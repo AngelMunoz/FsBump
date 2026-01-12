@@ -91,6 +91,7 @@ module ModelStore =
     let modelCache = Dictionary<string, Model>()
     let boundsCache = Dictionary<string, BoundingBox>()
     let geometryCache = Dictionary<string, ModelGeometry>()
+    let textureCache = Dictionary<string, Texture2D>()
 
     { new IModelStore with
 
@@ -119,5 +120,18 @@ module ModelStore =
         member _.GetGeometry(assetName: string) =
           match geometryCache.TryGetValue assetName with
           | true, geo -> Some geo
+          | false, _ -> None
+
+        member _.LoadTexture(assetName: string) =
+          if not(textureCache.ContainsKey assetName) then
+            try
+              let tex = Assets.texture assetName ctx
+              textureCache.[assetName] <- tex
+            with ex ->
+              printfn "Failed to load texture '%s': %O" assetName ex
+
+        member _.GetTexture(assetName: string) =
+          match textureCache.TryGetValue assetName with
+          | true, tex -> Some tex
           | false, _ -> None
     }

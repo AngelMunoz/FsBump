@@ -74,3 +74,5 @@ type IModelStore =
   abstract member Get: string -> Model option
   abstract member GetBounds: string -> BoundingBox option
   abstract member GetGeometry: string -> ModelGeometry option
+  abstract member LoadTexture: string -> unit
+  abstract member GetTexture: string -> Texture2D option

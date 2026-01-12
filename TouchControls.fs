@@ -111,15 +111,75 @@ open Mibo.Elmish.Graphics3D
 module TouchUI =
   open Mibo.Elmish.Graphics2D
 
-  let draw (state: TouchLogic.State) (buffer: RenderBuffer<RenderCmd2D>) =
-    match state.Joystick.ActiveId with
-    | Some _ ->
-      let center = state.Joystick.Center
-      let current = state.Joystick.Current
+  let private tileSize = 16
+
+  // Helper to get source rect assuming 16 columns (256px width)
+  // Adjust column count if texture is different width
+  let private getKeyRect (row: int) (col: int) =
+    Rectangle(col * tileSize, row * tileSize, tileSize, tileSize)
+
+  // Key Mappings for gdb-switch-2 (Approximations)
+  // Row 0: B, A, Y, X
+  // Row 1: Pressed versions
+  // D-Pad is further down. Let's use arrows for movement directions.
+  // Arrows seem to be around row 7 or 8.
+  let private arrowUp = getKeyRect 7 2
+  let private arrowLeft = getKeyRect 7 0
+  let private arrowDown = getKeyRect 7 1
+  let private arrowRight = getKeyRect 7 3
+  
+  let private analogStick = getKeyRect 1 4 // Left Stick 
+  
+  let private buttonA = getKeyRect 0 1 // A button for Jump
+
+  let draw
+    (modelStore: IModelStore)
+    (state: TouchLogic.State)
+    (buffer: RenderBuffer<RenderCmd2D>)
+    =
+    modelStore.GetTexture "gdb-switch-2"
+    |> Option.iter(fun texture ->
+      // Draw Joystick
+      match state.Joystick.ActiveId with
+      | Some _ ->
+        let center = state.Joystick.Center
+        let current = state.Joystick.Current
+        let offset = 48.0f
+
+        // Draw center (current position)
+        // Draw2D.sprite expects Rectangle. We'll create one centered at position.
+        let destRect (pos: Vector2) (scale: float32) = 
+          let size = float32 tileSize * scale
+          Rectangle(int (pos.X - size * 0.5f), int (pos.Y - size * 0.5f), int size, int size)
+
+        Draw2D.sprite texture (destRect current 2.0f)
+        |> Draw2D.withSource analogStick
+        |> Draw2D.withColor Color.White
+                |> Draw2D.submit buffer
+        // Draw Direction Hints
+        Draw2D.sprite texture (destRect (center + Vector2(0.0f, -offset)) 1.5f)
+        |> Draw2D.withSource arrowUp
+                |> Draw2D.submit buffer
+        Draw2D.sprite texture (destRect (center + Vector2(-offset, 0.0f)) 1.5f)
+        |> Draw2D.withSource arrowLeft
+                |> Draw2D.submit buffer
+        Draw2D.sprite texture (destRect (center + Vector2(0.0f, offset)) 1.5f)
+        |> Draw2D.withSource arrowDown
+                |> Draw2D.submit buffer
+        Draw2D.sprite texture (destRect (center + Vector2(offset, 0.0f)) 1.5f)
+        |> Draw2D.withSource arrowRight
+                |> Draw2D.submit buffer
+      | None -> ()
+
+      // Draw Jump Button Hint (Bottom Right)
+      let jumpPos = state.ScreenSize - Vector2(96.0f, 96.0f)
+      let jumpColor = if state.JumpTriggered then Color.Gray else Color.White
       
-      // We don't have the texture yet, but we'll try to call Draw2D.sprite
-      // to see if it exists and what its signature might be.
-      // Usually: texture, position, color
-      // Draw2D.sprite null center Color.White |> Draw2D.submit buffer
-      ()
-    | None -> ()
+      let jumpSize = float32 tileSize * 3.0f
+      let jumpRect = Rectangle(int (jumpPos.X - jumpSize * 0.5f), int (jumpPos.Y - jumpSize * 0.5f), int jumpSize, int jumpSize)
+
+      Draw2D.sprite texture jumpRect
+      |> Draw2D.withSource buttonA
+      |> Draw2D.withColor jumpColor
+              |> Draw2D.submit buffer    )
+

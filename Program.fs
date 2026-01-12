@@ -5,6 +5,7 @@ open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
 open Mibo.Elmish.Graphics3D
+open Mibo.Elmish.Graphics2D
 open Mibo.Elmish.Culling
 open Mibo.Input
 
@@ -199,10 +200,13 @@ module Program =
   // View
   // ─────────────────────────────────────────────────────────────
 
+  let viewUI (ctx: GameContext) (model: Model) (buffer: Mibo.Elmish.RenderBuffer<int<RenderLayer>, RenderCmd2D>) =
+    TouchUI.draw model.ModelStore model.TouchState buffer
+
   let view
     (ctx: GameContext)
     (model: Model)
-    (buffer: RenderBuffer<RenderCmd3D>)
+    (buffer: Mibo.Elmish.RenderBuffer<unit, RenderCmd3D>)
     =
     let camera =
       Camera3D.lookAt
@@ -212,7 +216,7 @@ module Program =
         (MathHelper.ToRadians 45.f)
         (800.f / 600.f)
         0.1f
-        100.f
+        2000.f
 
     Draw3D.camera camera buffer
 
@@ -269,6 +273,7 @@ module Program =
           }
           view
       )
+      |> Program.withRenderer(Batch2DRenderer.create viewUI)
       |> Program.withInput
       |> Program.withSubscription(fun ctx _ ->
         InputMapper.subscribeStatic

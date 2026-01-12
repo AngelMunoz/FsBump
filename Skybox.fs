@@ -21,14 +21,19 @@ module Skybox =
     =
     modelStore.Get "cube"
     |> Option.iter(fun mesh ->
+      // Ensure the model uses our custom skybox effect
+      for m in mesh.Meshes do
+        for part in m.MeshParts do
+          if part.Effect <> effect then
+            part.Effect <- effect
+
       // Huge scale to ensure it's outside the playable area
       // Centered on camera so it stays "at infinity" relative to the player
       let world =
-        Matrix.CreateScale(1000.0f)
+        Matrix.CreateScale(-1000.0f)
         * Matrix.CreateTranslation(cameraPosition)
 
       Draw3D.mesh mesh world
-      (*
       |> Draw3D.withEffect(fun fx ctx ->
         // Skybox view matrix: strip translation so it's always centered
         let view = ctx.View
@@ -38,7 +43,5 @@ module Skybox =
 
         fx.Parameters.["World"].SetValue(world)
         fx.Parameters.["View"].SetValue(staticView)
-        fx.Parameters.["Projection"].SetValue(ctx.Projection)
-        fx.Parameters.["Time"].SetValue(state.Time))
-      *)
+        fx.Parameters.["Projection"].SetValue(ctx.Projection))
       |> Draw3D.submit buffer)

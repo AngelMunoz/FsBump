@@ -32,6 +32,18 @@
 /processorParam:TextureFormat=Compressed
 /build:cube.obj
 
+#begin gdb-switch-2.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:gdb-switch-2.png
+
 #begin kaykit_platformer/blue/arch_blue.obj
 /importer:FbxImporter
 /processor:ModelProcessor
@@ -7463,3 +7475,10 @@
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
 /build:kaykit_platformer/yellow/star_yellow.obj
+
+#begin skyboxes/NightSky.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:skyboxes/NightSky.fx
+
