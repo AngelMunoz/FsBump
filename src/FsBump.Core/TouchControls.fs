@@ -134,6 +134,7 @@ module TouchUI =
 
   let draw
     (modelStore: IModelStore)
+    (screenSize: Vector2)
     (state: TouchLogic.State)
     (buffer: RenderBuffer<RenderCmd2D>)
     =
@@ -155,24 +156,29 @@ module TouchUI =
         Draw2D.sprite texture (destRect current 2.0f)
         |> Draw2D.withSource analogStick
         |> Draw2D.withColor Color.White
-                |> Draw2D.submit buffer
+        |> Draw2D.submit buffer
+
         // Draw Direction Hints
         Draw2D.sprite texture (destRect (center + Vector2(0.0f, -offset)) 1.5f)
         |> Draw2D.withSource arrowUp
-                |> Draw2D.submit buffer
+        |> Draw2D.submit buffer
+
         Draw2D.sprite texture (destRect (center + Vector2(-offset, 0.0f)) 1.5f)
         |> Draw2D.withSource arrowLeft
-                |> Draw2D.submit buffer
+        |> Draw2D.submit buffer
+
         Draw2D.sprite texture (destRect (center + Vector2(0.0f, offset)) 1.5f)
         |> Draw2D.withSource arrowDown
-                |> Draw2D.submit buffer
+        |> Draw2D.submit buffer
+
         Draw2D.sprite texture (destRect (center + Vector2(offset, 0.0f)) 1.5f)
         |> Draw2D.withSource arrowRight
-                |> Draw2D.submit buffer
+        |> Draw2D.submit buffer
+
       | None -> ()
 
       // Draw Jump Button Hint (Bottom Right)
-      let jumpPos = state.ScreenSize - Vector2(96.0f, 96.0f)
+      let jumpPos = screenSize - Vector2(96.0f, 96.0f)
       let jumpColor = if state.JumpTriggered then Color.Gray else Color.White
       
       let jumpSize = float32 tileSize * 3.0f
@@ -181,5 +187,6 @@ module TouchUI =
       Draw2D.sprite texture jumpRect
       |> Draw2D.withSource buttonA
       |> Draw2D.withColor jumpColor
-              |> Draw2D.submit buffer    )
+      |> Draw2D.submit buffer
+    )
 

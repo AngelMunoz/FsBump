@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FsBump.Core/FsBump.Core.fsproj" />
+    <Project Path="src/FsBump.Desktop/FsBump.Desktop.fsproj" />
+    <Project Path="src/FsBump.Android/FsBump.Android.fsproj" />
+    <Project Path="src/FsBump.WindowsDX/FsBump.WindowsDX.fsproj" />
+    <Project Path="src/FsBump.iOS/FsBump.iOS.fsproj" />
+  </Folder>
+</Solution>

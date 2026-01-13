@@ -112,6 +112,9 @@ module Program =
     let spawnVec = MapGenerator.getSpawnPoint()
     let player, pCmd = Player.init spawnVec
 
+    let vp = ctx.GraphicsDevice.Viewport
+    let screenSize = Vector2(float32 vp.Width, float32 vp.Height)
+
     {
       Player = player
       Map = [ startPlatform ] @ t1 @ t2 @ t3
@@ -124,7 +127,7 @@ module Program =
       Rng = rng
       Skybox = skyState
       SkyboxEffect = skyEffect
-      TouchState = TouchLogic.init (Vector2(1280.0f, 720.0f))
+      TouchState = TouchLogic.init screenSize
     },
     Cmd.map PlayerMsg pCmd
 
@@ -201,7 +204,9 @@ module Program =
   // ─────────────────────────────────────────────────────────────
 
   let viewUI (ctx: GameContext) (model: Model) (buffer: Mibo.Elmish.RenderBuffer<int<RenderLayer>, RenderCmd2D>) =
-    TouchUI.draw model.ModelStore model.TouchState buffer
+    let vp = ctx.GraphicsDevice.Viewport
+    let screenSize = Vector2(float32 vp.Width, float32 vp.Height)
+    TouchUI.draw model.ModelStore screenSize model.TouchState buffer
 
   let view
     (ctx: GameContext)
@@ -256,13 +261,7 @@ module Program =
       |> Draw3D.withColor Color.White
       |> Draw3D.submit buffer)
 
-  // ─────────────────────────────────────────────────────────────
-  // Entry Point
-  // ─────────────────────────────────────────────────────────────
-
-  [<EntryPoint>]
-  let main _ =
-    let program =
+  let create() =
       Program.mkProgram init update
       |> Program.withAssets
       |> Program.withRenderer(
@@ -287,7 +286,3 @@ module Program =
         game.IsMouseVisible <- true
         graphics.PreferredBackBufferWidth <- 1280
         graphics.PreferredBackBufferHeight <- 720)
-
-    use game = new ElmishGame<Model, Msg>(program)
-    game.Run()
-    0

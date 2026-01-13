@@ -1,3 +1,12 @@
+#if OPENGL
+	#define SV_Position POSITION
+	#define VS_SHADERMODEL vs_3_0
+	#define PS_SHADERMODEL ps_3_0
+#else
+	#define VS_SHADERMODEL vs_4_0_level_9_1
+	#define PS_SHADERMODEL ps_4_0_level_9_1
+#endif
+
 // Trivial shader to test cross-platform compilation
 matrix World;
 matrix View;
@@ -34,9 +43,9 @@ float hash(float3 p)
 float4 MainPS(VertexShaderOutput input) : COLOR0
 {
     float3 dir = normalize(input.TexCoord);
-    
+
     // Brighter night sky gradient
-    float3 topColor = float3(0.05, 0.15, 0.4); 
+    float3 topColor = float3(0.05, 0.15, 0.4);
     float3 bottomColor = float3(0.01, 0.02, 0.05);
     float3 sky = lerp(bottomColor, topColor, smoothstep(-0.2, 0.8, dir.y));
 
@@ -44,15 +53,15 @@ float4 MainPS(VertexShaderOutput input) : COLOR0
     // Scale direction to grid
     float3 grid = dir * 300.0;
     float3 cell = floor(grid);
-    
+
     // Hash the cell ID
     float h = hash(cell);
-    
+
     // Threshold for star presence
     float star = smoothstep(0.998, 1.0, h);
-    
+
     // Flicker or vary brightness (optional, static for now)
-    
+
     // Fade stars near horizon
     star *= smoothstep(-0.1, 0.2, dir.y);
 
@@ -63,7 +72,7 @@ technique ProceduralNightSky
 {
     pass P0
     {
-        VertexShader = compile vs_3_0 MainVS();
-        PixelShader = compile ps_3_0 MainPS();
+        VertexShader = compile VS_SHADERMODEL MainVS();
+        PixelShader = compile PS_SHADERMODEL MainPS();
     }
 };
