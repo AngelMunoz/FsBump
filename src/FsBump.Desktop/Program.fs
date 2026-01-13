@@ -1,8 +1,8 @@
 module FsBump.Desktop.Program
 
 open Mibo.Elmish
-open ProceduralMap
-open ProceduralMap.Program
+open FsBump.Core
+open FsBump.Core.Program
 
 [<EntryPoint>]
 let main _ =

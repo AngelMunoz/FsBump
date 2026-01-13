@@ -1,4 +1,4 @@
-namespace ProceduralMap
+namespace FsBump.Core
 
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
@@ -23,7 +23,7 @@ module TouchLogic =
     ScreenSize: Vector2
   }
 
-  let init (screenSize: Vector2) = {
+  let init(screenSize: Vector2) = {
     Joystick = {
       Center = Vector2.Zero
       Current = Vector2.Zero
@@ -46,10 +46,15 @@ module TouchLogic =
     | Some id ->
       let found =
         touches
-        |> Seq.tryFind (fun t -> t.Id = id && t.State <> TouchLocationState.Released)
+        |> Seq.tryFind(fun t ->
+          t.Id = id && t.State <> TouchLocationState.Released)
 
       match found with
-      | Some t -> nextJoystick <- { nextJoystick with Current = t.Position }
+      | Some t ->
+        nextJoystick <- {
+          nextJoystick with
+              Current = t.Position
+        }
       | None ->
         nextJoystick <- {
           Center = Vector2.Zero
@@ -81,7 +86,7 @@ module TouchLogic =
     }
 
   /// Map touch state to PlayerAction state
-  let toActionState (state: State) =
+  let toActionState(state: State) =
     let mutable held = Set.empty
     let mutable started = Set.empty
 
@@ -93,10 +98,17 @@ module TouchLogic =
       let maxDist = 100.0f
 
       if diff.Length() > deadzone then
-        if diff.Y < -deadzone then held <- held.Add MoveForward
-        if diff.Y > deadzone then held <- held.Add MoveBackward
-        if diff.X < -deadzone then held <- held.Add MoveLeft
-        if diff.X > deadzone then held <- held.Add MoveRight
+        if diff.Y < -deadzone then
+          held <- held.Add MoveForward
+
+        if diff.Y > deadzone then
+          held <- held.Add MoveBackward
+
+        if diff.X < -deadzone then
+          held <- held.Add MoveLeft
+
+        if diff.X > deadzone then
+          held <- held.Add MoveRight
     | None -> ()
 
     // 2. Jump
@@ -104,7 +116,12 @@ module TouchLogic =
       started <- started.Add Jump
 
     let baseInput: ActionState<PlayerAction> = ActionState.empty
-    { baseInput with Held = held; Started = started }
+
+    {
+      baseInput with
+          Held = held
+          Started = started
+    }
 
 open Mibo.Elmish.Graphics3D
 
@@ -127,9 +144,9 @@ module TouchUI =
   let private arrowLeft = getKeyRect 7 0
   let private arrowDown = getKeyRect 7 1
   let private arrowRight = getKeyRect 7 3
-  
-  let private analogStick = getKeyRect 1 4 // Left Stick 
-  
+
+  let private analogStick = getKeyRect 1 4 // Left Stick
+
   let private buttonA = getKeyRect 0 1 // A button for Jump
 
   let draw
@@ -149,9 +166,15 @@ module TouchUI =
 
         // Draw center (current position)
         // Draw2D.sprite expects Rectangle. We'll create one centered at position.
-        let destRect (pos: Vector2) (scale: float32) = 
+        let destRect (pos: Vector2) (scale: float32) =
           let size = float32 tileSize * scale
-          Rectangle(int (pos.X - size * 0.5f), int (pos.Y - size * 0.5f), int size, int size)
+
+          Rectangle(
+            int(pos.X - size * 0.5f),
+            int(pos.Y - size * 0.5f),
+            int size,
+            int size
+          )
 
         Draw2D.sprite texture (destRect current 2.0f)
         |> Draw2D.withSource analogStick
@@ -180,13 +203,18 @@ module TouchUI =
       // Draw Jump Button Hint (Bottom Right)
       let jumpPos = screenSize - Vector2(96.0f, 96.0f)
       let jumpColor = if state.JumpTriggered then Color.Gray else Color.White
-      
+
       let jumpSize = float32 tileSize * 3.0f
-      let jumpRect = Rectangle(int (jumpPos.X - jumpSize * 0.5f), int (jumpPos.Y - jumpSize * 0.5f), int jumpSize, int jumpSize)
+
+      let jumpRect =
+        Rectangle(
+          int(jumpPos.X - jumpSize * 0.5f),
+          int(jumpPos.Y - jumpSize * 0.5f),
+          int jumpSize,
+          int jumpSize
+        )
 
       Draw2D.sprite texture jumpRect
       |> Draw2D.withSource buttonA
       |> Draw2D.withColor jumpColor
-      |> Draw2D.submit buffer
-    )
-
+      |> Draw2D.submit buffer)

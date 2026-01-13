@@ -1,4 +1,4 @@
-namespace ProceduralMap
+namespace FsBump.Core
 
 open Mibo.Elmish
 open Mibo.Input

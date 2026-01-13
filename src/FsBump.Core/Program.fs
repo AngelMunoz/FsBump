@@ -1,4 +1,4 @@
-namespace ProceduralMap
+namespace FsBump.Core
 
 open System
 open Microsoft.Xna.Framework
@@ -31,10 +31,12 @@ module Program =
     (a: ActionState<PlayerAction>)
     (b: ActionState<PlayerAction>)
     : ActionState<PlayerAction> =
-    { a with
-        Held = Set.union a.Held b.Held
-        Started = Set.union a.Started b.Started
-        Released = Set.union a.Released b.Released }
+    {
+      a with
+          Held = Set.union a.Held b.Held
+          Started = Set.union a.Started b.Started
+          Released = Set.union a.Released b.Released
+    }
 
   // ─────────────────────────────────────────────────────────────
   // Messages
@@ -172,7 +174,10 @@ module Program =
       let mergedInput = mergeInput model.Player.Input touchInput
 
       let player' =
-        Player.Operations.updateTick dt model.ModelStore model.Map { model.Player with Input = mergedInput }
+        Player.Operations.updateTick dt model.ModelStore model.Map {
+          model.Player with
+              Input = mergedInput
+        }
 
       let camera' = Camera.update dt player'.Body.Position model.Camera
       let sky' = Skybox.update dt model.Skybox
@@ -203,7 +208,11 @@ module Program =
   // View
   // ─────────────────────────────────────────────────────────────
 
-  let viewUI (ctx: GameContext) (model: Model) (buffer: Mibo.Elmish.RenderBuffer<int<RenderLayer>, RenderCmd2D>) =
+  let viewUI
+    (ctx: GameContext)
+    (model: Model)
+    (buffer: Mibo.Elmish.RenderBuffer<int<RenderLayer>, RenderCmd2D>)
+    =
     let vp = ctx.GraphicsDevice.Viewport
     let screenSize = Vector2(float32 vp.Width, float32 vp.Height)
     TouchUI.draw model.ModelStore screenSize model.TouchState buffer
@@ -262,27 +271,33 @@ module Program =
       |> Draw3D.submit buffer)
 
   let create() =
-      Program.mkProgram init update
-      |> Program.withAssets
-      |> Program.withRenderer(
-        Batch3DRenderer.createWithConfig
-          {
-            Batch3DConfig.defaults with
-                ClearColor = ValueSome Color.CornflowerBlue
-          }
-          view
-      )
-      |> Program.withRenderer(Batch2DRenderer.create viewUI)
-      |> Program.withInput
-      |> Program.withSubscription(fun ctx _ ->
-        InputMapper.subscribeStatic
-          Player.Input.config
-          (fun input -> InputChanged input)
-          ctx)
-      |> Program.withTick Tick
-      |> Program.withConfig(fun (game, graphics) ->
-        game.Content.RootDirectory <- "Content"
-        game.Window.Title <- "Procedural Map"
-        game.IsMouseVisible <- true
-        graphics.PreferredBackBufferWidth <- 1280
-        graphics.PreferredBackBufferHeight <- 720)
+    Program.mkProgram init update
+    |> Program.withAssets
+    |> Program.withRenderer(
+      Batch3DRenderer.createWithConfig
+        {
+          Batch3DConfig.defaults with
+              ClearColor = ValueSome Color.CornflowerBlue
+        }
+        view
+    )
+    |> Program.withRenderer(Batch2DRenderer.create viewUI)
+    |> Program.withInput
+    |> Program.withSubscription(fun ctx _ ->
+      InputMapper.subscribeStatic
+        Player.Input.config
+        (fun input -> InputChanged input)
+        ctx)
+    |> Program.withTick Tick
+    |> Program.withConfig(fun (game, graphics) ->
+      game.Content.RootDirectory <- "Content"
+      game.Window.Title <- "Procedural Map"
+      game.IsMouseVisible <- true
+      graphics.PreferredBackBufferWidth <- 1280
+      graphics.PreferredBackBufferHeight <- 720
+      graphics.PreferMultiSampling <- true
+      graphics.SynchronizeWithVerticalRetrace <- true
+
+      graphics.PreparingDeviceSettings.Add(fun e ->
+        let pp = e.GraphicsDeviceInformation.PresentationParameters
+        pp.MultiSampleCount <- 8))

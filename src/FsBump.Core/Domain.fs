@@ -1,4 +1,4 @@
-namespace ProceduralMap
+namespace FsBump.Core
 
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics

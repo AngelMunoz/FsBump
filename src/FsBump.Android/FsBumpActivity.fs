@@ -7,8 +7,8 @@ open Android.Views
 open Microsoft.Xna.Framework
 open Mibo.Elmish
 
-open ProceduralMap
-open ProceduralMap.Program
+open FsBump.Core
+open FsBump.Core.Program
 
 [<Activity(Label = "FsBump",
            MainLauncher = true,
