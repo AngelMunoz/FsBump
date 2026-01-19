@@ -17,6 +17,7 @@ module Audio =
         ctx
 
     let jump = Assets.sound "Audio/Kenney/forceField_000" ctx
+    let jumpInstance = jump.CreateInstance()
 
 
     { new IAudioProvider with
@@ -25,5 +26,10 @@ module Audio =
           | AmbientMusic ->
             MediaPlayer.Play ambient
             MediaPlayer.IsRepeating <- true
-          | JumpSound -> jump.Play() |> ignore
+          | JumpSound ->
+            if jumpInstance.State = SoundState.Playing then
+              jumpInstance.Stop()
+              jumpInstance.Play()
+            else
+              jumpInstance.Play()
     }

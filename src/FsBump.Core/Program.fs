@@ -192,13 +192,14 @@ module Program =
       Cmd.batch2(genCmd, Cmd.map PlayerMsg pCmd)
     | PlayerMsg pMsg ->
       let nextPlayer, pCmd = Player.update pMsg model.Player
-      
-      let interceptedCmd = 
+
+      let interceptedCmd =
         match pMsg with
-        | Player.PlaySound audioId -> Cmd.ofMsg (PlayAudio audioId)
+        | Player.PlaySound audioId -> Cmd.ofMsg(PlayAudio audioId)
         | _ -> Cmd.none
 
-      { model with Player = nextPlayer }, Cmd.batch2 (Cmd.map PlayerMsg pCmd, interceptedCmd)
+      { model with Player = nextPlayer },
+      Cmd.batch2(Cmd.map PlayerMsg pCmd, interceptedCmd)
     | PlayAudio audioId ->
       model.Env.Audio.Play(audioId)
       model, Cmd.none
@@ -240,7 +241,7 @@ module Program =
             Light.Spot {
               Position = model.Player.Body.Position + Vector3(0.0f, 8.0f, 2.0f)
               Direction = Vector3.Normalize(Vector3(0.0f, -1.0f, -0.1f))
-              Color = Color.LightYellow
+              Color = Color.LightCyan
               Intensity = 2.0f
               Range = 100.0f
               InnerConeAngle = MathHelper.ToRadians 30.f
@@ -252,7 +253,7 @@ module Program =
             // 2. Global Fill Light: Directional Light (No Shadows)
             Light.Directional {
               Direction = Vector3.Normalize(Vector3(-1.0f, -1.0f, -0.5f))
-              Color = Color.White
+              Color = Color.Cyan
               Intensity = 0.4f
               Shadow = ValueNone
               CascadeCount = 0
