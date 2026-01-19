@@ -95,7 +95,7 @@ module Assets =
     modelStore.LoadTexture "gdb-switch-2"
 
   let skyboxEffect(ctx: Mibo.Elmish.GameContext) =
-    Assets.effect "skyboxes/NightSky" ctx
+    Assets.effect "Effects/NightSky" ctx
 
   let private getColor variant =
     match variant % 4 with

@@ -13,6 +13,18 @@
 
 #---------------------------------- Content ---------------------------------#
 
+#begin Audio/Kenney/forceField_000.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Audio/Kenney/forceField_000.ogg
+
+#begin Audio/pizzadoggy/Floating Dream.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Audio/pizzadoggy/Floating Dream.ogg
+
 #begin cube.obj
 /importer:FbxImporter
 /processor:ModelProcessor
@@ -31,6 +43,24 @@
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
 /build:cube.obj
+
+#begin Effects/NightSky.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/NightSky.fx
+
+#begin Effects/PBR.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/PBR.fx
+
+#begin Effects/ShadowCaster.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:Effects/ShadowCaster.fx
 
 #begin gdb-switch-2.png
 /importer:TextureImporter
@@ -7475,22 +7505,4 @@
 /processorParam:SwapWindingOrder=False
 /processorParam:TextureFormat=Compressed
 /build:kaykit_platformer/yellow/star_yellow.obj
-
-#begin skyboxes/NightSky.fx
-/importer:EffectImporter
-/processor:EffectProcessor
-/processorParam:DebugMode=Auto
-/build:skyboxes/NightSky.fx
-
-#begin Effects/PBR.fx
-/importer:EffectImporter
-/processor:EffectProcessor
-/processorParam:DebugMode=Auto
-/build:Effects/PBR.fx
-
-#begin Effects/ShadowCaster.fx
-/importer:EffectImporter
-/processor:EffectProcessor
-/processorParam:DebugMode=Auto
-/build:Effects/ShadowCaster.fx
 
