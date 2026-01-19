@@ -100,7 +100,7 @@ module Validation =
 
     let checkBoxes =
       newTiles
-      |> List.map(fun t -> getTileBounds t -(config.SafetyBuffer + 0.05f))
+      |> List.map(fun t -> getTileBounds t 0.0f)
 
     checkBoxes
     |> List.exists(fun cb ->

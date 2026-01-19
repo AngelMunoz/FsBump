@@ -504,3 +504,5 @@ src/FsBump.Core/Content/bin/*/Content/*
 # Ignore contents of skyboxes, but allow NightSky.xnb
 src/FsBump.Core/Content/bin/*/Content/skyboxes/*
 !src/FsBump.Core/Content/bin/*/Content/skyboxes/NightSky.xnb
+
+.gemini-clipboard/

@@ -4,9 +4,8 @@ open System
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
-open Mibo.Elmish.Graphics3D
+open Mibo.Rendering.Graphics3D
 open Mibo.Elmish.Graphics2D
-open Mibo.Elmish.Culling
 open Mibo.Input
 
 module Program =
@@ -220,67 +219,114 @@ module Program =
   let view
     (ctx: GameContext)
     (model: Model)
-    (buffer: Mibo.Elmish.RenderBuffer<unit, RenderCmd3D>)
+    (buffer: PipelineBuffer<RenderCommand>)
     =
     let camera =
-      Camera3D.lookAt
+      Camera.perspective
         model.Camera.Position
         model.Camera.Target
         Vector3.Up
         (MathHelper.ToRadians 45.f)
-        (800.f / 600.f)
+        (float32 ctx.GraphicsDevice.Viewport.AspectRatio)
         0.1f
         2000.f
 
-    Draw3D.camera camera buffer
+    let lighting = {
+      Lighting.defaultSunlight with
+          AmbientColor = Color.DarkSlateBlue
+          Lights = [|
+            // 1. Primary Shadow Caster: Spot Light following the player
+            // Moved Closer (8u height) for higher shadow resolution
+            Light.Spot {
+              Position = model.Player.Body.Position + Vector3(0.0f, 8.0f, 2.0f)
+              Direction = Vector3.Normalize(Vector3(0.0f, -1.0f, -0.1f))
+              Color = Color.LightYellow
+              Intensity = 2.0f
+              Range = 100.0f
+              InnerConeAngle = MathHelper.ToRadians 30.f
+              OuterConeAngle = MathHelper.ToRadians 80.f
+              Shadow = ValueSome ShadowSettings.defaults
+              SourceRadius = 0.1f
+            }
 
-    // Draw skybox first
-    Skybox.draw
-      model.ModelStore
-      model.Camera.Position
-      model.SkyboxEffect
-      model.Skybox
+            // 2. Global Fill Light: Directional Light (No Shadows)
+            Light.Directional {
+              Direction = Vector3.Normalize(Vector3(-1.0f, -1.0f, -0.5f))
+              Color = Color.White
+              Intensity = 0.4f
+              Shadow = ValueNone
+              CascadeCount = 0
+              CascadeSplits = [||]
+              SourceRadius = 0.0f
+            }
+          |]
+    }
+
+    let frustum = BoundingFrustum(camera.View * camera.Projection)
+
+    buffer
+      .Camera(camera)
+      .Lighting(lighting)
+      .Clear(Color.CornflowerBlue)
+      .ClearDepth()
+      .Custom(
+        Skybox.draw
+          model.ModelStore
+          model.Camera.Position
+          model.SkyboxEffect
+          model.Skybox
+      )
+      .DrawMany(
+        [|
+          for tile in model.Map do
+            let halfSize = tile.Size * 0.5f
+
+            let box =
+              BoundingBox(tile.Position - halfSize, tile.Position + halfSize)
+
+            if frustum.Intersects(box) then
+              match model.ModelStore.GetMesh(Assets.getAsset tile) with
+              | Some m -> draw {
+                  mesh m
+                  at tile.VisualOffset
+
+                  rotatedBy(
+                    Quaternion.CreateFromAxisAngle(Vector3.Up, tile.Rotation)
+                  )
+
+                  relativeTo(Matrix.CreateTranslation(tile.Position))
+                }
+              | None -> ()
+        |]
+      )
+      .Submit()
+
+    model.ModelStore.GetMesh Assets.PlayerBall
+    |> Option.iter(fun playerMesh ->
       buffer
-
-    let frustum = Camera3D.boundingFrustum camera
-
-    for tile in model.Map do
-      let halfSize = tile.Size * 0.5f
-      let box = BoundingBox(tile.Position - halfSize, tile.Position + halfSize)
-
-      if Culling.isGenericVisible frustum box then
-        Assets.getAsset tile
-        |> model.ModelStore.Get
-        |> Option.iter(fun mesh ->
-          let world =
-            Matrix.CreateTranslation(tile.VisualOffset)
-            * Matrix.CreateRotationY(tile.Rotation)
-            * Matrix.CreateTranslation(tile.Position)
-
-          Draw3D.mesh mesh world |> Draw3D.submit buffer)
-
-    model.ModelStore.Get Assets.PlayerBall
-    |> Option.iter(fun mesh ->
-      let world =
-        Matrix.CreateScale(model.Player.Body.Radius * 2.0f)
-        * Matrix.CreateFromQuaternion(model.Player.Rotation)
-        * Matrix.CreateTranslation(model.Player.Body.Position)
-
-      Draw3D.mesh mesh world
-      |> Draw3D.withColor Color.White
-      |> Draw3D.submit buffer)
+        .Draw(
+          draw {
+            mesh playerMesh
+            scaledBy(model.Player.Body.Radius * 2.0f)
+            rotatedBy model.Player.Rotation
+            at model.Player.Body.Position
+          }
+        )
+        .Submit())
 
   let create() =
     Program.mkProgram init update
     |> Program.withAssets
-    |> Program.withRenderer(
-      Batch3DRenderer.createWithConfig
-        {
-          Batch3DConfig.defaults with
-              ClearColor = ValueSome Color.CornflowerBlue
-        }
-        view
-    )
+    |> Program.withPipeline
+      (PipelineConfig.defaults
+       |> PipelineConfig.withShadows(
+         ShadowConfig.defaults |> ShadowConfig.withBias 0.0001f 0.0005f
+       )
+       |> PipelineConfig.withShader
+         ShaderBase.ShadowCaster
+         "Effects/ShadowCaster"
+       |> PipelineConfig.withShader ShaderBase.PBRForward "Effects/PBR")
+      view
     |> Program.withRenderer(Batch2DRenderer.create viewUI)
     |> Program.withInput
     |> Program.withSubscription(fun ctx _ ->

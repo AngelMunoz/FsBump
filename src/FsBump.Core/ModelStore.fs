@@ -4,6 +4,7 @@ open System.Collections.Generic
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Elmish
+open Mibo.Rendering.Graphics3D
 
 module ModelStore =
   open System
@@ -89,6 +90,7 @@ module ModelStore =
   /// Creates a new instance of the ModelStore service.
   let create(ctx: GameContext) =
     let modelCache = Dictionary<string, Model>()
+    let meshCache = Dictionary<string, Mesh>()
     let boundsCache = Dictionary<string, BoundingBox>()
     let geometryCache = Dictionary<string, ModelGeometry>()
     let textureCache = Dictionary<string, Texture2D>()
@@ -104,12 +106,23 @@ module ModelStore =
               modelCache.[assetName] <- model
               boundsCache.[assetName] <- bounds
               geometryCache.[assetName] <- geometry
+
+              // Convert Model to Pipeline Mesh
+              match Mesh.fromModel model |> Seq.tryHead with
+              | Some mesh -> meshCache.[assetName] <- mesh
+              | None -> ()
+
             with ex ->
               printfn "Failed to load asset '%s': %O" assetName ex
 
         member _.Get(assetName: string) =
           match modelCache.TryGetValue assetName with
           | true, model -> Some model
+          | false, _ -> None
+
+        member _.GetMesh(assetName: string) =
+          match meshCache.TryGetValue assetName with
+          | true, mesh -> Some mesh
           | false, _ -> None
 
         member _.GetBounds(assetName: string) =

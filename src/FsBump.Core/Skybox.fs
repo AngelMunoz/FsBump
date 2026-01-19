@@ -2,7 +2,7 @@ namespace FsBump.Core
 
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
-open Mibo.Elmish.Graphics3D
+open Mibo.Rendering.Graphics3D
 
 module Skybox =
 
@@ -17,30 +17,34 @@ module Skybox =
     (cameraPosition: Vector3)
     (effect: Effect)
     (state: State)
-    (buffer: RenderBuffer<RenderCmd3D>)
     =
-    modelStore.Get "cube"
-    |> Option.iter(fun mesh ->
-      // Ensure the model uses our custom skybox effect
-      for m in mesh.Meshes do
-        for part in m.MeshParts do
-          if part.Effect <> effect then
-            part.Effect <- effect
+    fun (device: GraphicsDevice) (camera: Camera) ->
+      modelStore.Get "cube"
+      |> Option.iter(fun model ->
+        // Ensure the model uses our custom skybox effect
+        for m in model.Meshes do
+          for part in m.MeshParts do
+            if part.Effect <> effect then
+              part.Effect <- effect
 
-      // Huge scale to ensure it's outside the playable area
-      // Centered on camera so it stays "at infinity" relative to the player
-      let world =
-        Matrix.CreateScale(-1000.0f) * Matrix.CreateTranslation(cameraPosition)
+        // Huge scale to ensure it's outside the playable area
+        // Centered on camera so it stays "at infinity" relative to the player
+        let world =
+          Matrix.CreateScale(-1000.0f) * Matrix.CreateTranslation(cameraPosition)
 
-      Draw3D.mesh mesh world
-      |> Draw3D.withEffect(fun fx ctx ->
         // Skybox view matrix: strip translation so it's always centered
-        let view = ctx.View
-
         let staticView =
-          Matrix.CreateWorld(Vector3.Zero, view.Forward, view.Up)
+          Matrix.CreateWorld(Vector3.Zero, camera.View.Forward, camera.View.Up)
 
-        fx.Parameters.["World"].SetValue(world)
-        fx.Parameters.["View"].SetValue(staticView)
-        fx.Parameters.["Projection"].SetValue(ctx.Projection))
-      |> Draw3D.submit buffer)
+        effect.Parameters.["World"].SetValue(world)
+        effect.Parameters.["View"].SetValue(staticView)
+        effect.Parameters.["Projection"].SetValue(camera.Projection)
+
+        device.DepthStencilState <- DepthStencilState.None
+        device.RasterizerState <- RasterizerState.CullNone
+
+        for mesh in model.Meshes do
+          mesh.Draw()
+
+        device.DepthStencilState <- DepthStencilState.Default
+        device.RasterizerState <- RasterizerState.CullCounterClockwise)

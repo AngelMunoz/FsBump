@@ -3,6 +3,7 @@ namespace FsBump.Core
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
 open Mibo.Input
+open Mibo.Rendering.Graphics3D
 
 type CollisionType =
   | Solid
@@ -72,6 +73,7 @@ type ModelGeometry = { Vertices: Vector3[]; Indices: int[] }
 type IModelStore =
   abstract member Load: string -> unit
   abstract member Get: string -> Model option
+  abstract member GetMesh: string -> Mesh option
   abstract member GetBounds: string -> BoundingBox option
   abstract member GetGeometry: string -> ModelGeometry option
   abstract member LoadTexture: string -> unit
