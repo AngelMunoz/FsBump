@@ -15,13 +15,13 @@
 
 #begin Audio/Kenney/forceField_000.ogg
 /importer:OggImporter
-/processor:SongProcessor
+/processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:Audio/Kenney/forceField_000.ogg
 
 #begin Audio/pizzadoggy/Floating Dream.ogg
 /importer:OggImporter
-/processor:SongProcessor
+/processor:SoundEffectProcessor
 /processorParam:Quality=Best
 /build:Audio/pizzadoggy/Floating Dream.ogg
 

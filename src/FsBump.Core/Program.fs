@@ -7,6 +7,8 @@ open Mibo.Elmish
 open Mibo.Rendering.Graphics3D
 open Mibo.Elmish.Graphics2D
 open Mibo.Input
+open FsBump.Core.Audio
+open FsBump.Core.RootComposition
 
 module Program =
 
@@ -45,6 +47,7 @@ module Program =
     | PlayerMsg of Player.Msg
     | InputChanged of ActionState<PlayerAction>
     | GenerateMap
+    | PlayAudio of AudioId
 
   // ─────────────────────────────────────────────────────────────
   // Init
@@ -57,13 +60,15 @@ module Program =
     let env = {
       ModelStore = modelStore
       Rng = Random.Shared
+      Audio = Audio.create ctx
     }
+
+    env.Audio.Play AmbientMusic
 
     let skyEffect = Assets.skyboxEffect ctx
     let skyState = Skybox.init()
 
-    let sSize, sOffset, sAsset =
-      TileBuilder.getAssetData "platform_4x4x1" 0 env
+    let sSize, sOffset, sAsset = TileBuilder.getAssetData "platform_4x4x1" 0 env
 
     let startPlatform = {
       Type = TileType.Platform
@@ -89,25 +94,13 @@ module Program =
     }
 
     let t1, st1 =
-      MapGenerator.generateSegment
-        env
-        initialPath
-        [ startPlatform ]
-        genConfig
+      MapGenerator.generateSegment env initialPath [ startPlatform ] genConfig
 
     let t2, st2 =
-      MapGenerator.generateSegment
-        env
-        st1
-        (startPlatform :: t1)
-        genConfig
+      MapGenerator.generateSegment env st1 (startPlatform :: t1) genConfig
 
     let t3, st3 =
-      MapGenerator.generateSegment
-        env
-        st2
-        (startPlatform :: t1 @ t2)
-        genConfig
+      MapGenerator.generateSegment env st2 (startPlatform :: t1 @ t2) genConfig
 
     let spawnVec = MapGenerator.getSpawnPoint()
     let player, pCmd = Player.init spawnVec
@@ -167,9 +160,10 @@ module Program =
         TouchLogic.update model.TouchState.ScreenSize model.TouchState
 
       let touchInput = TouchLogic.toActionState touchState'
+
       let mergedInput = mergeInput model.Player.Input touchInput
 
-      let player' =
+      let player', pCmd =
         Player.Operations.updateTick dt model.Env model.Map {
           model.Player with
               Input = mergedInput
@@ -195,10 +189,19 @@ module Program =
             Skybox = sky'
             TouchState = touchState'
       },
-      genCmd
+      Cmd.batch2(genCmd, Cmd.map PlayerMsg pCmd)
     | PlayerMsg pMsg ->
       let nextPlayer, pCmd = Player.update pMsg model.Player
-      { model with Player = nextPlayer }, Cmd.map PlayerMsg pCmd
+      
+      let interceptedCmd = 
+        match pMsg with
+        | Player.PlaySound audioId -> Cmd.ofMsg (PlayAudio audioId)
+        | _ -> Cmd.none
+
+      { model with Player = nextPlayer }, Cmd.batch2 (Cmd.map PlayerMsg pCmd, interceptedCmd)
+    | PlayAudio audioId ->
+      model.Env.Audio.Play(audioId)
+      model, Cmd.none
 
   // ─────────────────────────────────────────────────────────────
   // View
@@ -266,13 +269,13 @@ module Program =
       .Lighting(lighting)
       .Clear(Color.CornflowerBlue)
       .ClearDepth()
-       .Custom(
-         Skybox.draw
-           model.Env
-           model.Camera.Position
-           model.SkyboxEffect
-           model.Skybox
-       )
+      .Custom(
+        Skybox.draw
+          model.Env
+          model.Camera.Position
+          model.SkyboxEffect
+          model.Skybox
+      )
       .DrawMany(
         [|
           for tile in model.Map do

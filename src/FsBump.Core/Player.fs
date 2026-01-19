@@ -21,6 +21,10 @@ module Player =
       |> InputMap.key MoveRight Keys.Right
       |> InputMap.key Jump Keys.Space
 
+  type Msg = 
+    | InputChanged of ActionState<PlayerAction>
+    | PlaySound of AudioId
+
   module Operations =
     /// Initialize player state
     let create initialPos = {
@@ -38,7 +42,7 @@ module Player =
     /// Orchestrate one tick of player logic
     let updateTick
       (dt: float32)
-      (env: #IModelStoreProvider)
+      (env: #IModelStoreProvider & #IAudioProvider)
       (map: Tile list)
       (model: PlayerModel)
       =
@@ -83,35 +87,43 @@ module Player =
         else
           model.LastSafePosition
 
-      if bodyAfterPhysics.Position.Y < killFloor then
-        {
-          model with
-              Body = {
-                bodyAfterPhysics with
-                    Position = model.LastSafePosition + Vector3.Up * 2.5f
-                    Velocity = Vector3.Zero
-              }
-              IsGrounded = false
-              Rotation = Quaternion.Identity
-              Input = {
-                model.Input with
-                    Held = Set.empty
-                    Started = Set.empty
-              }
-        }
-      else
-        {
-          model with
-              Body = bodyAfterPhysics
-              IsGrounded = isGrounded
-              Rotation = newRotation
-              LastSafePosition = nextLastSafePos
-        }
+      let jumpCmd =
+        if jumpRequested && isGrounded then
+          Cmd.ofMsg(PlaySound JumpSound)
+        else
+          Cmd.none
 
-  type Msg = InputChanged of ActionState<PlayerAction>
+      let nextModel = 
+        if bodyAfterPhysics.Position.Y < killFloor then
+          {
+            model with
+                Body = {
+                  bodyAfterPhysics with
+                      Position = model.LastSafePosition + Vector3.Up * 2.5f
+                      Velocity = Vector3.Zero
+                }
+                IsGrounded = false
+                Rotation = Quaternion.Identity
+                Input = {
+                  model.Input with
+                      Held = Set.empty
+                      Started = Set.empty
+                }
+          }
+        else
+          {
+            model with
+                Body = bodyAfterPhysics
+                IsGrounded = isGrounded
+                Rotation = newRotation
+                LastSafePosition = nextLastSafePos
+          }
+      
+      nextModel, jumpCmd
 
   let init initialPos = Operations.create initialPos, Cmd.none
 
   let update msg (model: PlayerModel) =
     match msg with
     | InputChanged input -> { model with Input = input }, Cmd.none
+    | PlaySound _ -> model, Cmd.none
