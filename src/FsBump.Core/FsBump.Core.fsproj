@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <Compile Include="Domain.fs" />
+    <Compile Include="ModelStore.fs" />
+    <Compile Include="Assets.fs" />
     <Compile Include="Audio.fs" />
     <Compile Include="Physics.fs" />
     <Compile Include="Rotation.fs" />
@@ -13,8 +15,6 @@
     <Compile Include="Camera.fs" />
     <Compile Include="MapGeneration.fs" />
     <Compile Include="Player.fs" />
-    <Compile Include="ModelStore.fs" />
-    <Compile Include="Assets.fs" />
     <Compile Include="Skybox.fs" />
     <Compile Include="TouchControls.fs" />
     <Compile Include="Program.fs" />

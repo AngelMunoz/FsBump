@@ -3,6 +3,7 @@ namespace FsBump.Core
 open Mibo.Elmish
 open Mibo.Input
 open Microsoft.Xna.Framework
+open Mibo.Rendering.Graphics3D
 
 module Player =
 
@@ -113,11 +114,7 @@ module Player =
                 LastSafePosition = nextLastSafePos
           }
 
-      let cmd =
-        if didJump then
-          Cmd.ofMsg(PlaySound JumpSound)
-        else
-          Cmd.none
+      let cmd = if didJump then Cmd.ofMsg(PlaySound JumpSound) else Cmd.none
 
       model, cmd
 
@@ -127,3 +124,34 @@ module Player =
     match msg with
     | InputChanged input -> { model with Input = input }, Cmd.none
     | PlaySound _ -> model, Cmd.none
+
+  let getLight(model: PlayerModel) =
+    Light.Spot {
+      Position = model.Body.Position + Vector3(0.0f, 8.0f, 2.0f)
+      Direction = Vector3.Normalize(Vector3(0.0f, -1.0f, -0.1f))
+      Color = Color.Cyan
+      Intensity = 2.0f
+      Range = 100.0f
+      InnerConeAngle = MathHelper.ToRadians 30.f
+      OuterConeAngle = MathHelper.ToRadians 80.f
+      Shadow = ValueSome ShadowSettings.defaults
+      SourceRadius = 0.1f
+    }
+
+  let draw
+    (env: #IModelStoreProvider)
+    (model: PlayerModel)
+    (buffer: PipelineBuffer<RenderCommand>)
+    =
+    env.ModelStore.GetMesh Assets.PlayerBall
+    |> Option.iter(fun playerMesh ->
+      buffer
+        .Draw(
+          draw {
+            mesh playerMesh
+            scaledBy(model.Body.Radius * 2.0f)
+            rotatedBy model.Rotation
+            at model.Body.Position
+          }
+        )
+        .Submit())

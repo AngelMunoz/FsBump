@@ -236,25 +236,12 @@ module Program =
       Lighting.defaultSunlight with
           AmbientColor = Color.DarkSlateBlue
           Lights = [|
-            // 1. Primary Shadow Caster: Spot Light following the player
-            // Moved Closer (8u height) for higher shadow resolution
-            Light.Spot {
-              Position = model.Player.Body.Position + Vector3(0.0f, 8.0f, 2.0f)
-              Direction = Vector3.Normalize(Vector3(0.0f, -1.0f, -0.1f))
-              Color = Color.LightCyan
-              Intensity = 2.0f
-              Range = 100.0f
-              InnerConeAngle = MathHelper.ToRadians 30.f
-              OuterConeAngle = MathHelper.ToRadians 80.f
-              Shadow = ValueSome ShadowSettings.defaults
-              SourceRadius = 0.1f
-            }
+            Player.getLight model.Player
 
-            // 2. Global Fill Light: Directional Light (No Shadows)
             Light.Directional {
               Direction = Vector3.Normalize(Vector3(-1.0f, -1.0f, -0.5f))
-              Color = Color.Cyan
-              Intensity = 0.4f
+              Color = Color.White
+              Intensity = 1.5f
               Shadow = ValueNone
               CascadeCount = 0
               CascadeSplits = [||]
@@ -277,43 +264,12 @@ module Program =
           model.SkyboxEffect
           model.Skybox
       )
-      .DrawMany(
-        [|
-          for tile in model.Map do
-            let halfSize = tile.Size * 0.5f
-
-            let box =
-              BoundingBox(tile.Position - halfSize, tile.Position + halfSize)
-
-            if frustum.Intersects(box) then
-              match model.Env.ModelStore.GetMesh(Assets.getAsset tile) with
-              | Some m -> draw {
-                  mesh m
-                  at tile.VisualOffset
-
-                  rotatedBy(
-                    Quaternion.CreateFromAxisAngle(Vector3.Up, tile.Rotation)
-                  )
-
-                  relativeTo(Matrix.CreateTranslation(tile.Position))
-                }
-              | None -> ()
-        |]
-      )
       .Submit()
 
-    model.Env.ModelStore.GetMesh Assets.PlayerBall
-    |> Option.iter(fun playerMesh ->
-      buffer
-        .Draw(
-          draw {
-            mesh playerMesh
-            scaledBy(model.Player.Body.Radius * 2.0f)
-            rotatedBy model.Player.Rotation
-            at model.Player.Body.Position
-          }
-        )
-        .Submit())
+
+    MapGenerator.draw model.Env frustum model.Map buffer
+    Player.draw model.Env model.Player buffer
+
 
   let create() =
     Program.mkProgram init update

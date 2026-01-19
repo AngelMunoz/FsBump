@@ -2,6 +2,7 @@ namespace FsBump.Core
 
 open System
 open Microsoft.Xna.Framework
+open Mibo.Rendering.Graphics3D
 
 // ─────────────────────────────────────────────────────────────
 // Tile Construction
@@ -468,3 +469,35 @@ module MapGenerator =
         Some(finalMap, state')
       else
         None
+
+  let draw
+    (env: #IModelStoreProvider)
+    (frustum: BoundingFrustum)
+    (map: Tile list)
+    (buffer: PipelineBuffer<RenderCommand>)
+    =
+    buffer
+      .DrawMany(
+        [|
+          for tile in map do
+            let halfSize = tile.Size * 0.5f
+
+            let box =
+              BoundingBox(tile.Position - halfSize, tile.Position + halfSize)
+
+            if frustum.Intersects(box) then
+              match env.ModelStore.GetMesh(Assets.getAsset tile) with
+              | Some m -> draw {
+                  mesh m
+                  at tile.VisualOffset
+
+                  rotatedBy(
+                    Quaternion.CreateFromAxisAngle(Vector3.Up, tile.Rotation)
+                  )
+
+                  relativeTo(Matrix.CreateTranslation(tile.Position))
+                }
+              | None -> ()
+        |]
+      )
+      .Submit()
