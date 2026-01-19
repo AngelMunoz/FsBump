@@ -271,11 +271,13 @@ module Physics =
     (env: #IModelStoreProvider)
     (jumpRequested: bool)
     (isGrounded: bool)
-    : struct (Body * bool) =
+    : struct (Body * bool * bool) =
     let mutable v = body.Velocity
+    let mutable didJump = false
 
     if jumpRequested && isGrounded then
       v.Y <- Constants.JumpSpeed
+      didJump <- true
 
     v.Y <- v.Y + Constants.Gravity * dt
 
@@ -287,4 +289,4 @@ module Physics =
       |> (fun (b, g) ->
         Steps.horizontalPass false dt nearbyTiles env (b, g))
 
-    struct (body', grounded')
+    struct (body', grounded', didJump)

@@ -21,7 +21,7 @@
 
 #begin Audio/pizzadoggy/Floating Dream.ogg
 /importer:OggImporter
-/processor:SoundEffectProcessor
+/processor:SongProcessor
 /processorParam:Quality=Best
 /build:Audio/pizzadoggy/Floating Dream.ogg
 

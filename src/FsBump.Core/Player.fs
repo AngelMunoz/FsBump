@@ -21,7 +21,7 @@ module Player =
       |> InputMap.key MoveRight Keys.Right
       |> InputMap.key Jump Keys.Space
 
-  type Msg = 
+  type Msg =
     | InputChanged of ActionState<PlayerAction>
     | PlaySound of AudioId
 
@@ -57,7 +57,7 @@ module Player =
         |> List.filter(fun (t: Tile) ->
           Vector3.DistanceSquared(t.Position, bodyAfterMovement.Position) < 1600.0f)
 
-      let struct (bodyAfterPhysics, isGrounded) =
+      let struct (bodyAfterPhysics, isGrounded, didJump) =
         Physics.updateBody
           dt
           bodyAfterMovement
@@ -87,13 +87,7 @@ module Player =
         else
           model.LastSafePosition
 
-      let jumpCmd =
-        if jumpRequested && isGrounded then
-          Cmd.ofMsg(PlaySound JumpSound)
-        else
-          Cmd.none
-
-      let nextModel = 
+      let model =
         if bodyAfterPhysics.Position.Y < killFloor then
           {
             model with
@@ -118,8 +112,14 @@ module Player =
                 Rotation = newRotation
                 LastSafePosition = nextLastSafePos
           }
-      
-      nextModel, jumpCmd
+
+      let cmd =
+        if didJump then
+          Cmd.ofMsg(PlaySound JumpSound)
+        else
+          Cmd.none
+
+      model, cmd
 
   let init initialPos = Operations.create initialPos, Cmd.none
 
