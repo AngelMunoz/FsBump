@@ -150,12 +150,12 @@ module TouchUI =
   let private buttonA = getKeyRect 0 1 // A button for Jump
 
   let draw
-    (modelStore: IModelStore)
+    (env: #IModelStoreProvider)
     (screenSize: Vector2)
     (state: TouchLogic.State)
     (buffer: RenderBuffer<RenderCmd2D>)
     =
-    modelStore.GetTexture "gdb-switch-2"
+    env.ModelStore.GetTexture "gdb-switch-2"
     |> Option.iter(fun texture ->
       // Draw Joystick
       match state.Joystick.ActiveId with

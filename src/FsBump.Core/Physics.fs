@@ -90,8 +90,8 @@ module Physics =
         sprintf "kaykit_platformer/%s/%s_%s" color tile.AssetName color
 
     /// Resolves collision against mesh geometry
-    let resolve (body: Body) (tile: Tile) (modelStore: IModelStore) =
-      modelStore.GetGeometry(getAssetId tile)
+    let resolve (body: Body) (tile: Tile) (env: #IModelStoreProvider) =
+      env.ModelStore.GetGeometry(getAssetId tile)
       |> Option.bind(fun geo ->
         let world =
           Matrix.CreateTranslation(tile.VisualOffset)
@@ -139,7 +139,7 @@ module Physics =
     let verticalPass
       dt
       (tiles: Tile list)
-      (modelStore: IModelStore)
+      (env: #IModelStoreProvider)
       (body: Body, grounded: bool)
       =
       let mutable pos = body.Position + Vector3.Up * body.Velocity.Y * dt
@@ -156,7 +156,7 @@ module Physics =
         match t.Type with
         | TileType.SlopeTile
         | TileType.Decoration ->
-          Mesh.resolve currentBody t modelStore
+          Mesh.resolve currentBody t env
           |> Option.iter(fun (np, nv) ->
             let normal = Vector3.Normalize(np - pos)
 
@@ -194,7 +194,7 @@ module Physics =
       (isX: bool)
       (dt: float32)
       (tiles: Tile list)
-      (modelStore: IModelStore)
+      (env: #IModelStoreProvider)
       (body: Body, grounded: bool)
       =
       let axis = if isX then Vector3.UnitX else Vector3.UnitZ
@@ -212,7 +212,7 @@ module Physics =
           match t.Type with
           | TileType.SlopeTile
           | TileType.Decoration ->
-            Mesh.resolve { body with Position = nextPos } t modelStore
+            Mesh.resolve { body with Position = nextPos } t env
             |> Option.iter(fun (np, nv) ->
               let normal = Vector3.Normalize(np - nextPos)
               // If normal points significantly along the axis, it's a horizontal collision
@@ -268,7 +268,7 @@ module Physics =
     (dt: float32)
     (body: Body)
     (nearbyTiles: Tile list)
-    (modelStore: IModelStore)
+    (env: #IModelStoreProvider)
     (jumpRequested: bool)
     (isGrounded: bool)
     : struct (Body * bool) =
@@ -281,10 +281,10 @@ module Physics =
 
     let body', grounded' =
       ({ body with Velocity = v }, false)
-      |> Steps.verticalPass dt nearbyTiles modelStore
+      |> Steps.verticalPass dt nearbyTiles env
       |> (fun (b, g) ->
-        Steps.horizontalPass true dt nearbyTiles modelStore (b, g))
+        Steps.horizontalPass true dt nearbyTiles env (b, g))
       |> (fun (b, g) ->
-        Steps.horizontalPass false dt nearbyTiles modelStore (b, g))
+        Steps.horizontalPass false dt nearbyTiles env (b, g))
 
     struct (body', grounded')

@@ -18,9 +18,8 @@ module Program =
     Player: PlayerModel
     Map: Tile list
     PathState: PathState
-    ModelStore: IModelStore
+    Env: AppEnv
     Camera: Camera.State
-    Rng: Random
     Skybox: Skybox.State
     SkyboxEffect: Effect
     TouchState: TouchLogic.State
@@ -55,13 +54,16 @@ module Program =
     let modelStore = ModelStore.create ctx
     Assets.load modelStore
 
+    let env = {
+      ModelStore = modelStore
+      Rng = Random.Shared
+    }
+
     let skyEffect = Assets.skyboxEffect ctx
     let skyState = Skybox.init()
 
-    let rng = Random.Shared
-
     let sSize, sOffset, sAsset =
-      TileBuilder.getAssetData "platform_4x4x1" 0 modelStore
+      TileBuilder.getAssetData "platform_4x4x1" 0 env
 
     let startPlatform = {
       Type = TileType.Platform
@@ -88,27 +90,24 @@ module Program =
 
     let t1, st1 =
       MapGenerator.generateSegment
-        rng
+        env
         initialPath
         [ startPlatform ]
         genConfig
-        modelStore
 
     let t2, st2 =
       MapGenerator.generateSegment
-        rng
+        env
         st1
         (startPlatform :: t1)
         genConfig
-        modelStore
 
     let t3, st3 =
       MapGenerator.generateSegment
-        rng
+        env
         st2
         (startPlatform :: t1 @ t2)
         genConfig
-        modelStore
 
     let spawnVec = MapGenerator.getSpawnPoint()
     let player, pCmd = Player.init spawnVec
@@ -120,12 +119,11 @@ module Program =
       Player = player
       Map = [ startPlatform ] @ t1 @ t2 @ t3
       PathState = st3
-      ModelStore = modelStore
+      Env = env
       Camera = {
         Position = spawnVec + Vector3(0.0f, 10.0f, 10.0f)
         Target = spawnVec
       }
-      Rng = rng
       Skybox = skyState
       SkyboxEffect = skyEffect
       TouchState = TouchLogic.init screenSize
@@ -147,8 +145,7 @@ module Program =
     | GenerateMap ->
       let result =
         MapGenerator.Operations.updateMap
-          model.Rng
-          model.ModelStore
+          model.Env
           model.Player.Body.Position
           model.Map
           model.PathState
@@ -173,7 +170,7 @@ module Program =
       let mergedInput = mergeInput model.Player.Input touchInput
 
       let player' =
-        Player.Operations.updateTick dt model.ModelStore model.Map {
+        Player.Operations.updateTick dt model.Env model.Map {
           model.Player with
               Input = mergedInput
         }
@@ -214,7 +211,7 @@ module Program =
     =
     let vp = ctx.GraphicsDevice.Viewport
     let screenSize = Vector2(float32 vp.Width, float32 vp.Height)
-    TouchUI.draw model.ModelStore screenSize model.TouchState buffer
+    TouchUI.draw model.Env screenSize model.TouchState buffer
 
   let view
     (ctx: GameContext)
@@ -269,13 +266,13 @@ module Program =
       .Lighting(lighting)
       .Clear(Color.CornflowerBlue)
       .ClearDepth()
-      .Custom(
-        Skybox.draw
-          model.ModelStore
-          model.Camera.Position
-          model.SkyboxEffect
-          model.Skybox
-      )
+       .Custom(
+         Skybox.draw
+           model.Env
+           model.Camera.Position
+           model.SkyboxEffect
+           model.Skybox
+       )
       .DrawMany(
         [|
           for tile in model.Map do
@@ -285,7 +282,7 @@ module Program =
               BoundingBox(tile.Position - halfSize, tile.Position + halfSize)
 
             if frustum.Intersects(box) then
-              match model.ModelStore.GetMesh(Assets.getAsset tile) with
+              match model.Env.ModelStore.GetMesh(Assets.getAsset tile) with
               | Some m -> draw {
                   mesh m
                   at tile.VisualOffset
@@ -301,7 +298,7 @@ module Program =
       )
       .Submit()
 
-    model.ModelStore.GetMesh Assets.PlayerBall
+    model.Env.ModelStore.GetMesh Assets.PlayerBall
     |> Option.iter(fun playerMesh ->
       buffer
         .Draw(

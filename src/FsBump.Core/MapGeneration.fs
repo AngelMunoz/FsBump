@@ -21,7 +21,7 @@ module TileBuilder =
     VisualOffset = offset
   }
 
-  let getAssetData asset color (modelStore: IModelStore) =
+  let getAssetData asset color (env: #IModelStoreProvider) =
     let colorStr =
       match color % 4 with
       | 0 -> "blue"
@@ -31,12 +31,12 @@ module TileBuilder =
 
     let full = sprintf "kaykit_platformer/%s/%s_%s" colorStr asset colorStr
 
-    match modelStore.GetBounds full with
+    match env.ModelStore.GetBounds full with
     | Some b -> b.Max - b.Min, -((b.Min + b.Max) * 0.5f), asset
     | None -> Vector3.One, -Vector3.Up * 0.5f, asset
 
-  let floor pos color modelStore =
-    let size, offset, asset = getAssetData "platform_1x1x1" color modelStore
+  let floor pos color (env: #IModelStoreProvider) =
+    let size, offset, asset = getAssetData "platform_1x1x1" color env
     create TileType.Floor CollisionType.Solid pos 0.0f color size 0 asset offset
 
   let wall pos color size asset offset =
@@ -98,9 +98,7 @@ module Validation =
     let obstacleBoxes =
       obstacles |> List.map(fun t -> getTileBounds t config.SafetyBuffer)
 
-    let checkBoxes =
-      newTiles
-      |> List.map(fun t -> getTileBounds t 0.0f)
+    let checkBoxes = newTiles |> List.map(fun t -> getTileBounds t 0.0f)
 
     checkBoxes
     |> List.exists(fun cb ->
@@ -145,24 +143,22 @@ module StateOps =
 module BuildingBlocks =
 
   let addEdgeDetails
-    (rng: Random)
+    (env: #IRandomProvider & #IModelStoreProvider)
     (pos: Vector3)
     (color: int)
     (isLeft: bool)
-    (modelStore: IModelStore)
     (tiles: ResizeArray<Tile>)
     =
-    let roll = rng.NextDouble()
+    let roll = env.Random.NextDouble()
 
     if roll < 0.15 then
       let asset =
-        match rng.Next(0, 3) with
+        match env.Random.Next(0, 3) with
         | 0 -> "barrier_1x1x1"
         | 1 -> "barrier_1x1x2"
         | _ -> "barrier_2x1x1"
 
-      let size, offset, assetName =
-        TileBuilder.getAssetData asset color modelStore
+      let size, offset, assetName = TileBuilder.getAssetData asset color env
 
       tiles.Add(
         TileBuilder.wall
@@ -174,13 +170,12 @@ module BuildingBlocks =
       )
     elif roll < 0.3 then
       let asset =
-        match rng.Next(0, 3) with
+        match env.Random.Next(0, 3) with
         | 0 -> "flag_A"
         | 1 -> "signage_arrow_stand"
         | _ -> "flag_B"
 
-      let size, offset, assetName =
-        TileBuilder.getAssetData asset color modelStore
+      let size, offset, assetName = TileBuilder.getAssetData asset color env
 
       let rot = if isLeft then -MathHelper.PiOver2 else MathHelper.PiOver2
 
@@ -196,12 +191,11 @@ module BuildingBlocks =
           CollisionType.Passthrough
       )
     elif roll < 0.4 then
-      let asset = if rng.Next(0, 2) = 0 then "cone" else "button_base"
+      let asset = if env.Random.Next(0, 2) = 0 then "cone" else "button_base"
 
-      let size, offset, assetName =
-        TileBuilder.getAssetData asset color modelStore
+      let size, offset, assetName = TileBuilder.getAssetData asset color env
 
-      let rot = float32(rng.NextDouble()) * MathHelper.TwoPi
+      let rot = float32(env.Random.NextDouble()) * MathHelper.TwoPi
 
       tiles.Add(
         TileBuilder.decoration
@@ -216,8 +210,7 @@ module BuildingBlocks =
       )
 
   let addRow
-    (rng: Random)
-    (modelStore: IModelStore)
+    (env: #IRandomProvider & #IModelStoreProvider)
     (tiles: ResizeArray<Tile>)
     (state: PathState)
     =
@@ -226,31 +219,27 @@ module BuildingBlocks =
 
     for w in -state.Width .. state.Width do
       let tilePos = nextState.Position + right * float32 w
-      tiles.Add(TileBuilder.floor tilePos state.CurrentColor modelStore)
+      tiles.Add(TileBuilder.floor tilePos state.CurrentColor env)
 
       if abs w = state.Width then
-        addEdgeDetails rng tilePos state.CurrentColor (w < 0) modelStore tiles
+        addEdgeDetails env tilePos state.CurrentColor (w < 0) tiles
 
     nextState
 
   let addSlope
-    (rng: Random)
-    (modelStore: IModelStore)
+    (env: #IRandomProvider & #IModelStoreProvider)
     (tiles: ResizeArray<Tile>)
     (prevHalf: float32)
     (state: PathState)
     =
-    let goUp = rng.NextDouble() > 0.5
+    let goUp = env.Random.NextDouble() > 0.5
 
     let size, offset, assetBase =
-      TileBuilder.getAssetData
-        "platform_slope_4x2x2"
-        state.CurrentColor
-        modelStore
+      TileBuilder.getAssetData "platform_slope_4x2x2" state.CurrentColor env
 
     let currentHalf = size.Z * 0.5f
 
-    let gap = if rng.NextDouble() < 0.2 then 2.0f else -0.25f
+    let gap = if env.Random.NextDouble() < 0.2 then 2.0f else -0.25f
     let dist = prevHalf + currentHalf + gap
 
     let yOffset = if goUp then 0.0f else -size.Y
@@ -286,16 +275,15 @@ module BuildingBlocks =
     state |> StateOps.advance dist |> StateOps.moveY nextYOffset, currentHalf
 
   let addPlatform
-    (rng: Random)
-    (modelStore: IModelStore)
+    (env: #IRandomProvider & #IModelStoreProvider)
     (tiles: ResizeArray<Tile>)
     (state: PathState)
     =
     let gapSize =
-      if rng.NextDouble() < 0.8 then
-        rng.Next(1, 3)
+      if env.Random.NextDouble() < 0.8 then
+        env.Random.Next(1, 3)
       else
-        rng.Next(3, 5)
+        env.Random.Next(3, 5)
 
     let assets = [
       "platform_1x1x1"
@@ -306,11 +294,11 @@ module BuildingBlocks =
 
     let size, offset, assetBase =
       TileBuilder.getAssetData
-        assets.[rng.Next(assets.Length)]
+        assets.[env.Random.Next(assets.Length)]
         state.CurrentColor
-        modelStore
+        env
 
-    let heightChange = float32(rng.Next(-1, 2)) * 2.0f
+    let heightChange = float32(env.Random.Next(-1, 2)) * 2.0f
     let dist = 0.5f + float32 gapSize + size.Z * 0.5f
 
     let nextPos =
@@ -329,9 +317,8 @@ module BuildingBlocks =
 module SegmentStrategies =
 
   let flatRun
-    (rng: Random)
+    (env: #IRandomProvider & #IModelStoreProvider)
     (length: int)
-    (modelStore: IModelStore)
     (state: PathState)
     =
     let tiles = ResizeArray<Tile>()
@@ -339,17 +326,16 @@ module SegmentStrategies =
 
     if s.Direction <> s.PreviousDirection then
       for _ in 1 .. s.Width * 2 do
-        s <- s |> BuildingBlocks.addRow rng modelStore tiles
+        s <- s |> BuildingBlocks.addRow env tiles
 
     for _ in 1..length do
-      s <- s |> BuildingBlocks.addRow rng modelStore tiles
+      s <- s |> BuildingBlocks.addRow env tiles
 
     List.ofSeq tiles, s
 
   let slope
-    (rng: Random)
+    (env: #IRandomProvider & #IModelStoreProvider)
     (length: int)
-    (modelStore: IModelStore)
     (state: PathState)
     =
     let tiles = ResizeArray<Tile>()
@@ -357,23 +343,22 @@ module SegmentStrategies =
     let mutable ph = 0.5f
 
     for _ in 1 .. Math.Max(1, length / 2) do
-      let nextS, nextPh = s |> BuildingBlocks.addSlope rng modelStore tiles ph
+      let nextS, nextPh = s |> BuildingBlocks.addSlope env tiles ph
       s <- nextS
       ph <- nextPh
 
     List.ofSeq tiles, s
 
   let platform
-    (rng: Random)
+    (env: #IRandomProvider & #IModelStoreProvider)
     (count: int)
-    (modelStore: IModelStore)
     (state: PathState)
     =
     let tiles = ResizeArray<Tile>()
     let mutable s = state
 
     for _ in 1..count do
-      s <- s |> BuildingBlocks.addPlatform rng modelStore tiles
+      s <- s |> BuildingBlocks.addPlatform env tiles
 
     List.ofSeq tiles, s
 
@@ -394,11 +379,10 @@ module MapGenerator =
   let getSpawnPoint() = Vector3(0.0f, 4.0f, 0.0f)
 
   let generateSegment
-    (rng: Random)
+    (env: #IRandomProvider & #IModelStoreProvider)
     (state: PathState)
     (obstacles: Tile list)
     (config: GenerationConfig)
-    (modelStore: IModelStore)
     =
     let relevantObstacles =
       obstacles
@@ -407,14 +391,14 @@ module MapGenerator =
         box.Contains(state.Position) = ContainmentType.Disjoint)
 
     let rec retry attempt =
-      let segmentType = rng.Next(0, 4)
-      let length = rng.Next(10, 20)
+      let segmentType = env.Random.Next(0, 4)
+      let length = env.Random.Next(10, 20)
 
       let tiles, endState =
         match segmentType with
-        | 1 -> state |> SegmentStrategies.slope rng length modelStore
-        | 2 -> state |> SegmentStrategies.platform rng (length / 2) modelStore
-        | _ -> state |> SegmentStrategies.flatRun rng length modelStore
+        | 1 -> state |> SegmentStrategies.slope env length
+        | 2 -> state |> SegmentStrategies.platform env (length / 2)
+        | _ -> state |> SegmentStrategies.flatRun env length
 
       let nextState =
         {
@@ -422,7 +406,7 @@ module MapGenerator =
               CurrentColor = (state.CurrentColor + 1) % 4
         }
         |> StateOps.turn(
-          match rng.Next(0, 3) with
+          match env.Random.Next(0, 3) with
           | 1 -> MathHelper.PiOver2
           | 2 -> -MathHelper.PiOver2
           | _ -> 0.0f
@@ -433,7 +417,7 @@ module MapGenerator =
       elif attempt < 5 then
         retry(attempt + 1)
       else
-        let t, s = state |> SegmentStrategies.flatRun rng 5 modelStore
+        let t, s = state |> SegmentStrategies.flatRun env 5
 
         t,
         {
@@ -449,8 +433,7 @@ module MapGenerator =
 
     /// Handle infinite map generation and cleanup
     let updateMap
-      (rng: Random)
-      (modelStore: IModelStore)
+      (env: #IRandomProvider & #IModelStoreProvider)
       (playerPosition: Vector3)
       (map: Tile list)
       (pathState: PathState)
@@ -469,7 +452,7 @@ module MapGenerator =
               Vector3.DistanceSquared(t.Position, pathState.Position) < 2500.0f)
 
           let newTiles, nextState =
-            generateSegment rng pathState obstacles config modelStore
+            generateSegment env pathState obstacles config
 
           map @ newTiles, nextState, true
         else

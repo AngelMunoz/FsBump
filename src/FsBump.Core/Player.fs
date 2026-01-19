@@ -38,7 +38,7 @@ module Player =
     /// Orchestrate one tick of player logic
     let updateTick
       (dt: float32)
-      (modelStore: IModelStore)
+      (env: #IModelStoreProvider)
       (map: Tile list)
       (model: PlayerModel)
       =
@@ -58,7 +58,7 @@ module Player =
           dt
           bodyAfterMovement
           nearbyTiles
-          modelStore
+          env
           jumpRequested
           model.IsGrounded
 

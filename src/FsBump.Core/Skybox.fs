@@ -13,13 +13,13 @@ module Skybox =
   let update dt state = { state with Time = state.Time + dt }
 
   let draw
-    (modelStore: IModelStore)
+    (env: #IModelStoreProvider)
     (cameraPosition: Vector3)
     (effect: Effect)
     (state: State)
     =
     fun (device: GraphicsDevice) (camera: Camera) ->
-      modelStore.Get "cube"
+      env.ModelStore.Get "cube"
       |> Option.iter(fun model ->
         // Ensure the model uses our custom skybox effect
         for m in model.Meshes do
