@@ -31,9 +31,8 @@ type FsBumpActivity() =
       Program.create()
       |> Program.withConfig(fun (game, graphics) ->
         graphics.SupportedOrientations <-
-          DisplayOrientation.LandscapeLeft
-          ||| DisplayOrientation.LandscapeRight
-          ||| DisplayOrientation.Portrait)
+          DisplayOrientation.LandscapeRight
+          ||| DisplayOrientation.LandscapeRight)
 
     let game = new ElmishGame<Model, Msg>(program)
     let view = game.Services.GetService(typeof<View>) :?> View

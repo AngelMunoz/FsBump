@@ -48,6 +48,7 @@ module Program =
     | InputChanged of ActionState<PlayerAction>
     | GenerateMap
     | PlayAudio of AudioId
+    | BakeGeometry
 
   // ─────────────────────────────────────────────────────────────
   // Init
@@ -203,6 +204,9 @@ module Program =
     | PlayAudio audioId ->
       model.Env.Audio.Play(audioId)
       model, Cmd.none
+    | BakeGeometry ->
+      model.Env.ModelStore.Bake()
+      model, Cmd.none
 
   // ─────────────────────────────────────────────────────────────
   // View
@@ -284,7 +288,6 @@ module Program =
          "Effects/ShadowCaster"
        |> PipelineConfig.withShader ShaderBase.PBRForward "Effects/PBR")
       view
-    |> Program.withRenderer(Batch2DRenderer.create viewUI)
     |> Program.withInput
     |> Program.withSubscription(fun ctx _ ->
       InputMapper.subscribeStatic

@@ -19,7 +19,8 @@ module TouchLogic =
 
   type State = {
     Joystick: JoystickState
-    JumpTriggered: bool
+    JumpTouchId: int option
+    IsNewJump: bool
     ScreenSize: Vector2
   }
 
@@ -29,7 +30,8 @@ module TouchLogic =
       Current = Vector2.Zero
       ActiveId = None
     }
-    JumpTriggered = false
+    JumpTouchId = None
+    IsNewJump = false
     ScreenSize = screenSize
   }
 
@@ -39,50 +41,53 @@ module TouchLogic =
   let update (screenSize: Vector2) (state: State) =
     let touches = TouchPanel.GetState()
     let mutable nextJoystick = state.Joystick
-    let mutable jumpTriggered = false
+    let mutable nextJumpId = state.JumpTouchId
+    let mutable isNewJump = false
 
-    // Reset joystick if touch ended
-    match state.Joystick.ActiveId with
+    // 1. Update Joystick
+    match nextJoystick.ActiveId with
     | Some id ->
-      let found =
-        touches
-        |> Seq.tryFind(fun t ->
-          t.Id = id && t.State <> TouchLocationState.Released)
-
-      match found with
-      | Some t ->
-        nextJoystick <- {
-          nextJoystick with
-              Current = t.Position
-        }
-      | None ->
-        nextJoystick <- {
-          Center = Vector2.Zero
-          Current = Vector2.Zero
-          ActiveId = None
-        }
+      match touches |> Seq.tryFind (fun t -> t.Id = id) with
+      | Some t when t.State <> TouchLocationState.Released ->
+          nextJoystick <- { nextJoystick with Current = t.Position }
+      | _ ->
+          nextJoystick <- { Center = Vector2.Zero; Current = Vector2.Zero; ActiveId = None }
     | None -> ()
 
-    // Process new touches
+    // 2. Update Jump
+    match nextJumpId with
+    | Some id ->
+       if not (touches |> Seq.exists (fun t -> t.Id = id && t.State <> TouchLocationState.Released)) then
+         nextJumpId <- None
+    | None -> ()
+
+    // 3. Process New/Missed Touches
+    // We check ALL touches because Mibo might have consumed 'Pressed'
     for touch in touches do
+      // Only consider valid active touches
       match touch.State with
-      | TouchLocationState.Pressed ->
-        match getZone touch.Position screenSize with
-        | LeftSide when nextJoystick.ActiveId.IsNone ->
-          nextJoystick <- {
-            Center = touch.Position
-            Current = touch.Position
-            ActiveId = Some touch.Id
-          }
-        | RightSide -> jumpTriggered <- true
-        | _ -> ()
+      | TouchLocationState.Pressed | TouchLocationState.Moved ->
+          match getZone touch.Position screenSize with
+          | LeftSide ->
+              // If joystick is inactive, start it
+              if nextJoystick.ActiveId.IsNone then
+                  nextJoystick <- {
+                    Center = touch.Position
+                    Current = touch.Position
+                    ActiveId = Some touch.Id
+                  }
+          | RightSide ->
+              // If jump is inactive, start it
+              if nextJumpId.IsNone then
+                  nextJumpId <- Some touch.Id
+                  isNewJump <- true
       | _ -> ()
 
     {
-      state with
-          Joystick = nextJoystick
-          JumpTriggered = jumpTriggered
-          ScreenSize = screenSize
+      Joystick = nextJoystick
+      JumpTouchId = nextJumpId
+      IsNewJump = isNewJump
+      ScreenSize = screenSize
     }
 
   /// Map touch state to PlayerAction state
@@ -94,25 +99,27 @@ module TouchLogic =
     match state.Joystick.ActiveId with
     | Some _ ->
       let diff = state.Joystick.Current - state.Joystick.Center
-      let deadzone = 10.0f
-      let maxDist = 100.0f
+      // Increased deadzone for activation to prevent accidental movement
+      let activationThreshold = 25.0f
+      // Lower threshold for axis to allow diagonals once activated
+      let axisThreshold = 15.0f
 
-      if diff.Length() > deadzone then
-        if diff.Y < -deadzone then
+      if diff.Length() > activationThreshold then
+        if diff.Y < -axisThreshold then
           held <- held.Add MoveForward
 
-        if diff.Y > deadzone then
+        if diff.Y > axisThreshold then
           held <- held.Add MoveBackward
 
-        if diff.X < -deadzone then
+        if diff.X < -axisThreshold then
           held <- held.Add MoveLeft
 
-        if diff.X > deadzone then
+        if diff.X > axisThreshold then
           held <- held.Add MoveRight
     | None -> ()
 
     // 2. Jump
-    if state.JumpTriggered then
+    if state.IsNewJump then
       started <- started.Add Jump
 
     let baseInput: ActionState<PlayerAction> = ActionState.empty
@@ -202,7 +209,7 @@ module TouchUI =
 
       // Draw Jump Button Hint (Bottom Right)
       let jumpPos = screenSize - Vector2(96.0f, 96.0f)
-      let jumpColor = if state.JumpTriggered then Color.Gray else Color.White
+      let jumpColor = if state.JumpTouchId.IsSome then Color.Gray else Color.White
 
       let jumpSize = float32 tileSize * 3.0f
 

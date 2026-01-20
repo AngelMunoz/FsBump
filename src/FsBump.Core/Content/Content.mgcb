@@ -25,6 +25,9 @@
 /processorParam:Quality=Best
 /build:Audio/pizzadoggy/Floating Dream.ogg
 
+#begin collision.txt
+/copy:collision.txt
+
 #begin cube.obj
 /importer:FbxImporter
 /processor:ModelProcessor

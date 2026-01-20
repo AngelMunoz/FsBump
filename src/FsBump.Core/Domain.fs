@@ -79,6 +79,7 @@ type AudioId =
 
 type IModelStore =
   abstract member Load: string -> unit
+  abstract member Bake: unit -> unit
   abstract member Get: string -> Model option
   abstract member GetMesh: string -> Mesh option
   abstract member GetBounds: string -> BoundingBox option
