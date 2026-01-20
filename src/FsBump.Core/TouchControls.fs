@@ -43,13 +43,30 @@ module TouchLogic =
     let mutable nextJoystick = state.Joystick
     let mutable nextJumpId = state.JumpTouchId
     let mutable isNewJump = false
+    
+    let maxJoystickRadius = 100.0f
 
     // 1. Update Joystick
     match nextJoystick.ActiveId with
     | Some id ->
       match touches |> Seq.tryFind (fun t -> t.Id = id) with
       | Some t when t.State <> TouchLocationState.Released ->
-          nextJoystick <- { nextJoystick with Current = t.Position }
+          let currentPos = t.Position
+          let diff = currentPos - nextJoystick.Center
+          let dist = diff.Length()
+          
+          // Floating Joystick: Center follows if we move too far
+          let nextCenter =
+            if dist > maxJoystickRadius then
+                currentPos - (Vector2.Normalize(diff) * maxJoystickRadius)
+            else
+                nextJoystick.Center
+
+          nextJoystick <- { 
+            nextJoystick with 
+                Current = currentPos
+                Center = nextCenter
+          }
       | _ ->
           nextJoystick <- { Center = Vector2.Zero; Current = Vector2.Zero; ActiveId = None }
     | None -> ()
@@ -62,14 +79,10 @@ module TouchLogic =
     | None -> ()
 
     // 3. Process New/Missed Touches
-    // We check ALL touches because Mibo might have consumed 'Pressed'
     for touch in touches do
-      // Only consider valid active touches
-      match touch.State with
-      | TouchLocationState.Pressed | TouchLocationState.Moved ->
+      if touch.State <> TouchLocationState.Released then
           match getZone touch.Position screenSize with
           | LeftSide ->
-              // If joystick is inactive, start it
               if nextJoystick.ActiveId.IsNone then
                   nextJoystick <- {
                     Center = touch.Position
@@ -77,11 +90,9 @@ module TouchLogic =
                     ActiveId = Some touch.Id
                   }
           | RightSide ->
-              // If jump is inactive, start it
               if nextJumpId.IsNone then
                   nextJumpId <- Some touch.Id
                   isNewJump <- true
-      | _ -> ()
 
     {
       Joystick = nextJoystick
@@ -95,40 +106,39 @@ module TouchLogic =
     let mutable held = Set.empty
     let mutable started = Set.empty
 
-    // 1. Joystick Movement
     match state.Joystick.ActiveId with
     | Some _ ->
       let diff = state.Joystick.Current - state.Joystick.Center
-      // Increased deadzone for activation to prevent accidental movement
-      let activationThreshold = 25.0f
-      // Lower threshold for axis to allow diagonals once activated
-      let axisThreshold = 15.0f
-
+      
+      // Activation threshold (how far to drag before moving starts)
+      let activationThreshold = 15.0f 
+      
       if diff.Length() > activationThreshold then
-        if diff.Y < -axisThreshold then
-          held <- held.Add MoveForward
+        let absX = abs diff.X
+        let absY = abs diff.Y
+        
+        // Horizontal/Vertical bias: If one axis is significantly stronger, 
+        // snap to that axis for better cardinal control.
+        let biasRatio = 0.4f
+        let moveUp = diff.Y < -activationThreshold
+        let moveDown = diff.Y > activationThreshold
+        let moveLeft = diff.X < -activationThreshold
+        let moveRight = diff.X > activationThreshold
 
-        if diff.Y > axisThreshold then
-          held <- held.Add MoveBackward
+        if absY > absX * biasRatio then
+            if moveUp then held <- held.Add MoveForward
+            if moveDown then held <- held.Add MoveBackward
 
-        if diff.X < -axisThreshold then
-          held <- held.Add MoveLeft
-
-        if diff.X > axisThreshold then
-          held <- held.Add MoveRight
+        if absX > absY * biasRatio then
+            if moveLeft then held <- held.Add MoveLeft
+            if moveRight then held <- held.Add MoveRight
     | None -> ()
 
-    // 2. Jump
     if state.IsNewJump then
       started <- started.Add Jump
 
     let baseInput: ActionState<PlayerAction> = ActionState.empty
-
-    {
-      baseInput with
-          Held = held
-          Started = started
-    }
+    { baseInput with Held = held; Started = started }
 
 open Mibo.Elmish.Graphics3D
 
@@ -138,23 +148,15 @@ module TouchUI =
   let private tileSize = 16
 
   // Helper to get source rect assuming 16 columns (256px width)
-  // Adjust column count if texture is different width
   let private getKeyRect (row: int) (col: int) =
     Rectangle(col * tileSize, row * tileSize, tileSize, tileSize)
 
-  // Key Mappings for gdb-switch-2 (Approximations)
-  // Row 0: B, A, Y, X
-  // Row 1: Pressed versions
-  // D-Pad is further down. Let's use arrows for movement directions.
-  // Arrows seem to be around row 7 or 8.
   let private arrowUp = getKeyRect 7 2
   let private arrowLeft = getKeyRect 7 0
   let private arrowDown = getKeyRect 7 1
   let private arrowRight = getKeyRect 7 3
-
-  let private analogStick = getKeyRect 1 4 // Left Stick
-
-  let private buttonA = getKeyRect 0 1 // A button for Jump
+  let private analogStick = getKeyRect 1 4 
+  let private buttonA = getKeyRect 0 1 
 
   let draw
     (env: #IModelStoreProvider)
@@ -171,17 +173,9 @@ module TouchUI =
         let current = state.Joystick.Current
         let offset = 48.0f
 
-        // Draw center (current position)
-        // Draw2D.sprite expects Rectangle. We'll create one centered at position.
         let destRect (pos: Vector2) (scale: float32) =
           let size = float32 tileSize * scale
-
-          Rectangle(
-            int(pos.X - size * 0.5f),
-            int(pos.Y - size * 0.5f),
-            int size,
-            int size
-          )
+          Rectangle(int(pos.X - size * 0.5f), int(pos.Y - size * 0.5f), int size, int size)
 
         Draw2D.sprite texture (destRect current 2.0f)
         |> Draw2D.withSource analogStick
@@ -210,16 +204,10 @@ module TouchUI =
       // Draw Jump Button Hint (Bottom Right)
       let jumpPos = screenSize - Vector2(96.0f, 96.0f)
       let jumpColor = if state.JumpTouchId.IsSome then Color.Gray else Color.White
-
       let jumpSize = float32 tileSize * 3.0f
 
       let jumpRect =
-        Rectangle(
-          int(jumpPos.X - jumpSize * 0.5f),
-          int(jumpPos.Y - jumpSize * 0.5f),
-          int jumpSize,
-          int jumpSize
-        )
+        Rectangle(int(jumpPos.X - jumpSize * 0.5f), int(jumpPos.Y - jumpSize * 0.5f), int jumpSize, int jumpSize)
 
       Draw2D.sprite texture jumpRect
       |> Draw2D.withSource buttonA

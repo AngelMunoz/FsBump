@@ -156,18 +156,19 @@ module Program =
     | Tick gt ->
       let dt = float32 gt.ElapsedGameTime.TotalSeconds
 
-      // Update touch logic
+      // 1. Update transient touch logic
       let touchState' =
         TouchLogic.update model.TouchState.ScreenSize model.TouchState
 
+      // 2. Compute effective input for THIS frame (do not save merged state back to model)
       let touchInput = TouchLogic.toActionState touchState'
+      let effectiveInput = mergeInput model.Player.Input touchInput
 
-      let mergedInput = mergeInput model.Player.Input touchInput
-
+      // 3. Update player physics using effective input
       let player', pCmd =
         Player.Operations.updateTick dt model.Env model.Map {
           model.Player with
-              Input = mergedInput
+              Input = effectiveInput
         }
 
       let camera' = Camera.update dt player'.Body.Position model.Camera
@@ -185,7 +186,9 @@ module Program =
 
       {
         model with
-            Player = player'
+            // Preserve the original persistent input (keyboard), 
+            // but update the body/state from physics result
+            Player = { player' with Input = model.Player.Input }
             Camera = camera'
             Skybox = sky'
             TouchState = touchState'
