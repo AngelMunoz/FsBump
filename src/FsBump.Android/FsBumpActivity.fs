@@ -9,6 +9,7 @@ open Mibo.Elmish
 
 open FsBump.Core
 open FsBump.Core.Program
+open Microsoft.Xna.Framework.Graphics
 
 [<Activity(Label = "FsBump",
            MainLauncher = true,
@@ -30,11 +31,13 @@ type FsBumpActivity() =
     let program =
       Program.create()
       |> Program.withConfig(fun (game, graphics) ->
+        graphics.PreferredDepthStencilFormat <- DepthFormat.Depth24
+
         graphics.SupportedOrientations <-
           DisplayOrientation.LandscapeRight
           ||| DisplayOrientation.LandscapeRight)
 
-    let game = new ElmishGame<Model, Msg>(program)
+    let game = new ElmishGame<_, _>(program)
     let view = game.Services.GetService(typeof<View>) :?> View
     this.SetContentView(view)
     game.Run()

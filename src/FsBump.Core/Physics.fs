@@ -92,7 +92,7 @@ module Physics =
     /// Resolves collision against mesh geometry
     let resolve (body: Body) (tile: Tile) (env: #IModelStoreProvider) =
       env.ModelStore.GetGeometry(getAssetId tile)
-      |> Option.bind(fun geo ->
+      |> ValueOption.bind(fun geo ->
         let world =
           Matrix.CreateTranslation(tile.VisualOffset)
           * Matrix.CreateRotationY(tile.Rotation)
@@ -132,7 +132,7 @@ module Physics =
 
               hit <- true
 
-        if hit then Some(p, v) else None)
+        if hit then ValueSome(p, v) else ValueNone)
 
   module private Steps =
     /// Resolve vertical movement and collisions
@@ -157,7 +157,7 @@ module Physics =
         | TileType.SlopeTile
         | TileType.Decoration ->
           Mesh.resolve currentBody t env
-          |> Option.iter(fun (np, nv) ->
+          |> ValueOption.iter(fun (np, nv) ->
             let normal = Vector3.Normalize(np - pos)
 
             if normal.Y > 0.5f then
@@ -213,7 +213,7 @@ module Physics =
           | TileType.SlopeTile
           | TileType.Decoration ->
             Mesh.resolve { body with Position = nextPos } t env
-            |> Option.iter(fun (np, nv) ->
+            |> ValueOption.iter(fun (np, nv) ->
               let normal = Vector3.Normalize(np - nextPos)
               // If normal points significantly along the axis, it's a horizontal collision
               if abs(if isX then normal.X else normal.Z) > 0.5f then
@@ -284,9 +284,7 @@ module Physics =
     let body', grounded' =
       ({ body with Velocity = v }, false)
       |> Steps.verticalPass dt nearbyTiles env
-      |> (fun (b, g) ->
-        Steps.horizontalPass true dt nearbyTiles env (b, g))
-      |> (fun (b, g) ->
-        Steps.horizontalPass false dt nearbyTiles env (b, g))
+      |> (fun (b, g) -> Steps.horizontalPass true dt nearbyTiles env (b, g))
+      |> (fun (b, g) -> Steps.horizontalPass false dt nearbyTiles env (b, g))
 
     struct (body', grounded', didJump)

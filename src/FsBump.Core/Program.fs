@@ -186,9 +186,12 @@ module Program =
 
       {
         model with
-            // Preserve the original persistent input (keyboard), 
+            // Preserve the original persistent input (keyboard),
             // but update the body/state from physics result
-            Player = { player' with Input = model.Player.Input }
+            Player = {
+              player' with
+                  Input = model.Player.Input
+            }
             Camera = camera'
             Skybox = sky'
             TouchState = touchState'
@@ -241,7 +244,6 @@ module Program =
 
     let lighting = {
       Lighting.defaultSunlight with
-          AmbientColor = Color.DarkSlateBlue
           Lights = [|
             Player.getLight model.Player
 
@@ -284,7 +286,8 @@ module Program =
     |> Program.withPipeline
       (PipelineConfig.defaults
        |> PipelineConfig.withShadows(
-         ShadowConfig.defaults |> ShadowConfig.withBias 0.0001f 0.0005f
+         ShadowConfig.defaults 
+         |> ShadowConfig.withBias 0.001f 0.005f
        )
        |> PipelineConfig.withShader
          ShaderBase.ShadowCaster
@@ -302,6 +305,7 @@ module Program =
       game.Content.RootDirectory <- "Content"
       game.Window.Title <- "Procedural Map"
       game.IsMouseVisible <- true
+      graphics.PreferredDepthStencilFormat <- DepthFormat.Depth24
       graphics.PreferMultiSampling <- true
       graphics.SynchronizeWithVerticalRetrace <- true
 

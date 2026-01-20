@@ -18,91 +18,196 @@ module ModelStore =
     Indices: int[]
   }
 
-  let private extractModelData(model: Model) =
-    let mutable min = Vector3(Single.MaxValue)
-    let mutable max = Vector3(Single.MinValue)
-    let allVertices = ResizeArray<Vector3>()
-    let allIndices = ResizeArray<int>()
-    let mutable vertexOffset = 0
+  module Naming =
+    let getShapeKey(name: string) =
+      if name.StartsWith("kaykit_platformer/") then
+        let parts = name.Split('/')
 
-    for mesh in model.Meshes do
-      for part in mesh.MeshParts do
-        let declaration = part.VertexBuffer.VertexDeclaration
-        let elements = declaration.GetVertexElements()
+        if parts.Length >= 3 then
+          let baseName = parts.[2]
 
-        let posElement =
-          elements
-          |> Array.tryFind(fun e ->
-            e.VertexElementUsage = VertexElementUsage.Position)
-
-        match posElement with
-        | Some elem ->
-          let partVertices = Array.zeroCreate<Vector3> part.NumVertices
-
-          part.VertexBuffer.GetData(
-            part.VertexOffset * declaration.VertexStride + int elem.Offset,
-            partVertices,
-            0,
-            part.NumVertices,
-            declaration.VertexStride
-          )
-
-          for v in partVertices do
-            min <- Vector3.Min(min, v)
-            max <- Vector3.Max(max, v)
-            allVertices.Add(v)
-
-          if
-            part.IndexBuffer.IndexElementSize = IndexElementSize.SixteenBits
-          then
-            let partIndices = Array.zeroCreate<uint16>(part.PrimitiveCount * 3)
-
-            part.IndexBuffer.GetData(
-              part.StartIndex * 2,
-              partIndices,
-              0,
-              part.PrimitiveCount * 3
-            )
-
-            for i in partIndices do
-              allIndices.Add(int i + vertexOffset)
+          if baseName.Contains("_") then
+            baseName.Substring(0, baseName.LastIndexOf('_'))
           else
-            let partIndices = Array.zeroCreate<int>(part.PrimitiveCount * 3)
-
-            part.IndexBuffer.GetData(
-              part.StartIndex * 4,
-              partIndices,
-              0,
-              part.PrimitiveCount * 3
-            )
-
-            for i in partIndices do
-              allIndices.Add(i + vertexOffset)
-
-          vertexOffset <- vertexOffset + part.NumVertices
-        | None -> ()
-
-    BoundingBox(min, max),
-    {
-      Vertices = allVertices.ToArray()
-      Indices = allIndices.ToArray()
-    }
-
-  let getShapeKey(name: string) =
-    if name.StartsWith("kaykit_platformer/") then
-      let parts = name.Split('/')
-
-      if parts.Length >= 3 then
-        let baseName = parts.[2]
-
-        if baseName.Contains("_") then
-          baseName.Substring(0, baseName.LastIndexOf('_'))
+            baseName
         else
-          baseName
+          name
       else
         name
-    else
-      name
+
+  module Geometry =
+    let extract(model: Model) =
+      let mutable totalVertices = 0
+      let mutable totalIndices = 0
+
+      for mesh in model.Meshes do
+        for part in mesh.MeshParts do
+          totalVertices <- totalVertices + part.NumVertices
+          totalIndices <- totalIndices + (part.PrimitiveCount * 3)
+
+      let allVertices = Array.zeroCreate<Vector3> totalVertices
+      let allIndices = Array.zeroCreate<int> totalIndices
+
+      let mutable vertexOffset = 0
+      let mutable indexOffset = 0
+
+      let mutable min = Vector3(Single.MaxValue)
+      let mutable max = Vector3(Single.MinValue)
+
+      for mesh in model.Meshes do
+        for part in mesh.MeshParts do
+          let declaration = part.VertexBuffer.VertexDeclaration
+          let elements = declaration.GetVertexElements()
+
+          let posElement =
+            elements
+            |> Array.tryFind(fun e ->
+              e.VertexElementUsage = VertexElementUsage.Position)
+
+          match posElement with
+          | Some elem ->
+            part.VertexBuffer.GetData(
+              part.VertexOffset * declaration.VertexStride + int elem.Offset,
+              allVertices,
+              vertexOffset,
+              part.NumVertices,
+              declaration.VertexStride
+            )
+
+            for i in 0 .. part.NumVertices - 1 do
+              let v = allVertices.[vertexOffset + i]
+              min <- Vector3.Min(min, v)
+              max <- Vector3.Max(max, v)
+
+            if
+              part.IndexBuffer.IndexElementSize = IndexElementSize.SixteenBits
+            then
+              let partIndices =
+                Array.zeroCreate<uint16>(part.PrimitiveCount * 3)
+
+              part.IndexBuffer.GetData(
+                part.StartIndex * 2,
+                partIndices,
+                0,
+                part.PrimitiveCount * 3
+              )
+
+              for i in 0 .. partIndices.Length - 1 do
+                allIndices.[indexOffset + i] <-
+                  int partIndices.[i] + vertexOffset
+            else
+              let partIndices = Array.zeroCreate<int>(part.PrimitiveCount * 3)
+
+              part.IndexBuffer.GetData(
+                part.StartIndex * 4,
+                partIndices,
+                0,
+                part.PrimitiveCount * 3
+              )
+
+              for i in 0 .. partIndices.Length - 1 do
+                allIndices.[indexOffset + i] <- partIndices.[i] + vertexOffset
+
+            vertexOffset <- vertexOffset + part.NumVertices
+            indexOffset <- indexOffset + (part.PrimitiveCount * 3)
+          | None -> ()
+
+      BoundingBox(min, max),
+      {
+        Vertices = allVertices
+        Indices = allIndices
+      }
+
+  module Serialization =
+    let private inv = CultureInfo.InvariantCulture
+
+    let private vecToStr(v: Vector3) =
+      v.X.ToString("F3", inv)
+      + ","
+      + v.Y.ToString("F3", inv)
+      + ","
+      + v.Z.ToString("F3", inv)
+
+    let serialize(shapes: seq<string * (ModelGeometry * BoundingBox)>) =
+      let sb = System.Text.StringBuilder()
+
+      for name, (geo, bounds) in shapes do
+        let minS = vecToStr bounds.Min
+        let maxS = vecToStr bounds.Max
+
+        let vS = geo.Vertices |> Array.map vecToStr |> String.concat ","
+
+        let iS = geo.Indices |> Array.map string |> String.concat ","
+
+        sb.AppendLine(sprintf "%s|%s|%s|%s|%s" name minS maxS vS iS) |> ignore
+
+      sb.ToString()
+
+    let private parseVector(span: ReadOnlySpan<char>) =
+      let mutable start = 0
+      let coords = Array.zeroCreate<float32> 3
+      let mutable count = 0
+
+      for i in 0 .. span.Length - 1 do
+        if span.[i] = ',' then
+          coords.[count] <- Single.Parse(span.Slice(start, i - start), inv)
+          start <- i + 1
+          count <- count + 1
+
+      coords.[2] <- Single.Parse(span.Slice(start), inv)
+      Vector3(coords.[0], coords.[1], coords.[2])
+
+    let deserialize(reader: StreamReader) =
+      let map = Dictionary<string, BakedShape>()
+
+      while not reader.EndOfStream do
+        let line = reader.ReadLine()
+
+        if not(String.IsNullOrWhiteSpace line) then
+          let parts = line.Split('|')
+
+          if parts.Length = 5 then
+            let name = parts.[0]
+            let min = parseVector(parts.[1].AsSpan())
+            let max = parseVector(parts.[2].AsSpan())
+
+            let vParts = parts.[3].Split(',')
+            let vertices = Array.zeroCreate<Vector3>(vParts.Length / 3)
+
+            for i in 0 .. vertices.Length - 1 do
+              let x = Single.Parse(vParts.[i * 3], inv)
+              let y = Single.Parse(vParts.[i * 3 + 1], inv)
+              let z = Single.Parse(vParts.[i * 3 + 2], inv)
+              vertices.[i] <- Vector3(x, y, z)
+
+            let iParts = parts.[4].Split(',')
+
+            let indices =
+              Array.init iParts.Length (fun i -> Int32.Parse(iParts.[i], inv))
+
+            map.[name] <- {
+              Min = min
+              Max = max
+              Vertices = vertices
+              Indices = indices
+            }
+
+      map
+
+  module Persistence =
+    let save ctx (content: string) =
+      let path = Path.Combine(ctx.Content.RootDirectory, "collision.txt")
+      File.WriteAllText(path, content)
+      path
+
+    let load ctx =
+      Assets.fromCustom
+        "collision.txt"
+        (fun _ ->
+          use str = TitleContainer.OpenStream("Content/collision.txt")
+          use reader = new StreamReader(str)
+          Serialization.deserialize reader)
+        ctx
 
   let create(ctx: GameContext) =
     let modelCache = Dictionary<string, Model>()
@@ -111,62 +216,9 @@ module ModelStore =
     let geometryCache = Dictionary<string, ModelGeometry>()
     let textureCache = Dictionary<string, Texture2D>()
 
-    let loadBaking() =
+    let populateCaches() =
       try
-        // Using Assets.fromCustom to load our custom collision.txt
-        let shapes =
-          Assets.fromCustom
-            "collision.txt"
-            (fun path ->
-              use str = TitleContainer.OpenStream($"Content/{path}")
-              use reader = new StreamReader(str)
-
-              let lines =
-                reader
-                  .ReadToEnd()
-                  .Split(
-                    [| '\n'; '\r' |],
-                    StringSplitOptions.RemoveEmptyEntries
-                  )
-
-              let map = Dictionary<string, BakedShape>()
-
-              for line in lines do
-                if not(String.IsNullOrWhiteSpace line) then
-                  let parts = line.Split('|')
-
-                  if parts.Length = 5 then
-                    let name = parts.[0]
-
-                    let minP =
-                      parts.[1].Split(',')
-                      |> Array.map(fun s -> float32(float s))
-
-                    let maxP =
-                      parts.[2].Split(',')
-                      |> Array.map(fun s -> float32(float s))
-
-                    let vP =
-                      parts.[3].Split(',')
-                      |> Array.map(fun s -> float32(float s))
-
-                    let iP = parts.[4].Split(',') |> Array.map int
-
-                    let vertices = Array.zeroCreate<Vector3>(vP.Length / 3)
-
-                    for i in 0 .. vertices.Length - 1 do
-                      vertices.[i] <-
-                        Vector3(vP.[i * 3], vP.[i * 3 + 1], vP.[i * 3 + 2])
-
-                    map.[name] <- {
-                      Min = Vector3(minP.[0], minP.[1], minP.[2])
-                      Max = Vector3(maxP.[0], maxP.[1], maxP.[2])
-                      Vertices = vertices
-                      Indices = iP
-                    }
-
-              map)
-            ctx
+        let shapes = Persistence.load ctx
 
         for KeyValue(name, s) in shapes do
           boundsCache.[name] <- BoundingBox(s.Min, s.Max)
@@ -181,55 +233,31 @@ module ModelStore =
       with ex ->
         printfn "Failed to load baked geometry: %s" ex.Message
 
-    loadBaking()
+    populateCaches()
 
     { new IModelStore with
-        member this.Bake() =
-          let shapes = Dictionary<string, ModelGeometry * BoundingBox>()
+        member _.Bake() =
+          let shapesStr =
+            modelCache
+            |> Seq.map(fun kv -> Naming.getShapeKey kv.Key, kv.Value)
+            |> Seq.distinctBy fst
+            |> Seq.map(fun (key, model) ->
+              let bounds, geo = Geometry.extract model
+              key, (geo, bounds))
+            |> Serialization.serialize
 
-          for KeyValue(name, model) in modelCache do
-            let key = getShapeKey name
-
-            if not(shapes.ContainsKey key) then
-              let bounds, geo = extractModelData model
-              shapes.[key] <- (geo, bounds)
-
-          let sb = System.Text.StringBuilder()
-
-          for KeyValue(name, (geo, bounds)) in shapes do
-            let minS =
-              sprintf "%.3f,%.3f,%.3f" bounds.Min.X bounds.Min.Y bounds.Min.Z
-
-            let maxS =
-              sprintf "%.3f,%.3f,%.3f" bounds.Max.X bounds.Max.Y bounds.Max.Z
-
-            let vS =
-              geo.Vertices
-              |> Array.map(fun v -> sprintf "%.3f,%.3f,%.3f" v.X v.Y v.Z)
-              |> String.concat ","
-
-            let iS = geo.Indices |> Array.map string |> String.concat ","
-
-            sb.AppendLine(sprintf "%s|%s|%s|%s|%s" name minS maxS vS iS)
-            |> ignore
-
-          let path = Path.Combine(ctx.Content.RootDirectory, "collision.txt")
-          File.WriteAllText(path, sb.ToString())
-
-          printfn
-            "Baking complete. Saved %d unique shapes to %s"
-            shapes.Count
-            path
+          let path = Persistence.save ctx shapesStr
+          printfn "Baking complete. Saved to %s" path
 
         member _.Load(assetName: string) =
           if not(modelCache.ContainsKey assetName) then
             try
               let model = Assets.model assetName ctx
               modelCache.[assetName] <- model
-              let key = getShapeKey assetName
+              let key = Naming.getShapeKey assetName
 
               if not(geometryCache.ContainsKey key) then
-                let bounds, geometry = extractModelData model
+                let bounds, geometry = Geometry.extract model
                 boundsCache.[key] <- bounds
                 geometryCache.[key] <- geometry
 
@@ -241,23 +269,23 @@ module ModelStore =
 
         member _.Get(assetName: string) =
           match modelCache.TryGetValue assetName with
-          | true, v -> Some v
-          | _ -> None
+          | true, v -> ValueSome v
+          | _ -> ValueNone
 
         member _.GetMesh(assetName: string) =
           match meshCache.TryGetValue assetName with
-          | true, v -> Some v
-          | _ -> None
+          | true, v -> ValueSome v
+          | _ -> ValueNone
 
         member _.GetBounds(assetName: string) =
-          match boundsCache.TryGetValue(getShapeKey assetName) with
-          | true, v -> Some v
-          | _ -> None
+          match boundsCache.TryGetValue(Naming.getShapeKey assetName) with
+          | true, v -> ValueSome v
+          | _ -> ValueNone
 
         member _.GetGeometry(assetName: string) =
-          match geometryCache.TryGetValue(getShapeKey assetName) with
-          | true, v -> Some v
-          | _ -> None
+          match geometryCache.TryGetValue(Naming.getShapeKey assetName) with
+          | true, v -> ValueSome v
+          | _ -> ValueNone
 
         member _.LoadTexture(name) =
           if not(textureCache.ContainsKey name) then
@@ -268,6 +296,6 @@ module ModelStore =
 
         member _.GetTexture(name) =
           match textureCache.TryGetValue name with
-          | true, v -> Some v
-          | _ -> None
+          | true, v -> ValueSome v
+          | _ -> ValueNone
     }

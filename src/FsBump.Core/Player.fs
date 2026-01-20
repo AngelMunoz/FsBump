@@ -144,7 +144,7 @@ module Player =
     (buffer: PipelineBuffer<RenderCommand>)
     =
     env.ModelStore.GetMesh Assets.PlayerBall
-    |> Option.iter(fun playerMesh ->
+    |> ValueOption.iter(fun playerMesh ->
       buffer
         .Draw(
           draw {

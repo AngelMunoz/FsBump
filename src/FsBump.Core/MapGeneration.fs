@@ -33,8 +33,8 @@ module TileBuilder =
     let full = sprintf "kaykit_platformer/%s/%s_%s" colorStr asset colorStr
 
     match env.ModelStore.GetBounds full with
-    | Some b -> b.Max - b.Min, -((b.Min + b.Max) * 0.5f), asset
-    | None -> Vector3.One, -Vector3.Up * 0.5f, asset
+    | ValueSome b -> b.Max - b.Min, -((b.Min + b.Max) * 0.5f), asset
+    | ValueNone -> Vector3.One, -Vector3.Up * 0.5f, asset
 
   let floor pos color (env: #IModelStoreProvider) =
     let size, offset, asset = getAssetData "platform_1x1x1" color env
@@ -486,18 +486,17 @@ module MapGenerator =
               BoundingBox(tile.Position - halfSize, tile.Position + halfSize)
 
             if frustum.Intersects(box) then
-              match env.ModelStore.GetMesh(Assets.getAsset tile) with
-              | Some m -> draw {
-                  mesh m
-                  at tile.VisualOffset
+              env.ModelStore.GetMesh(Assets.getAsset tile)
+              |> ValueOption.bind(fun m -> draw {
+                mesh m
+                at tile.VisualOffset
 
-                  rotatedBy(
-                    Quaternion.CreateFromAxisAngle(Vector3.Up, tile.Rotation)
-                  )
+                rotatedBy(
+                  Quaternion.CreateFromAxisAngle(Vector3.Up, tile.Rotation)
+                )
 
-                  relativeTo(Matrix.CreateTranslation(tile.Position))
-                }
-              | None -> ()
+                relativeTo(Matrix.CreateTranslation(tile.Position))
+              })
         |]
       )
       .Submit()

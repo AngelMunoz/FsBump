@@ -80,12 +80,12 @@ type AudioId =
 type IModelStore =
   abstract member Load: string -> unit
   abstract member Bake: unit -> unit
-  abstract member Get: string -> Model option
-  abstract member GetMesh: string -> Mesh option
-  abstract member GetBounds: string -> BoundingBox option
-  abstract member GetGeometry: string -> ModelGeometry option
+  abstract member Get: string -> Model voption
+  abstract member GetMesh: string -> Mesh voption
+  abstract member GetBounds: string -> BoundingBox voption
+  abstract member GetGeometry: string -> ModelGeometry voption
   abstract member LoadTexture: string -> unit
-  abstract member GetTexture: string -> Texture2D option
+  abstract member GetTexture: string -> Texture2D voption
 
 type IModelStoreProvider =
   abstract ModelStore: IModelStore
