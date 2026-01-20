@@ -52,9 +52,33 @@ module Movement =
       Vector3(nextHorizontal.X, currentVel.Y, nextHorizontal.Y)
 
   /// Update player movement velocity based on input
-  let update (dt: float32) (input: ActionState<PlayerAction>) (body: Body) =
-    let vel' =
-      Internal.computeDirection input
-      |> (fun d -> Internal.applyPhysics dt d body.Velocity)
+  let update
+    (dt: float32)
+    (cameraYaw: float32)
+    (input: ActionState<PlayerAction>)
+    (analogDir: Vector2)
+    (body: Body)
+    =
+    let dir, magnitude =
+      if analogDir.LengthSquared() > 0.001f then
+        // Analog Input (Touch)
+        // Map Screen (X, Y) to World (X, Z)
+        // Screen Up is -Y, we want Forward (-Z).
+        // Screen Right is +X, we want Right (+X).
+        // So direct mapping (X, Y) -> (X, Z) works.
+        Vector3(analogDir.X, 0.0f, analogDir.Y), analogDir.Length()
+      else
+        // Discrete Input (Keyboard)
+        let d = Internal.computeDirection input
+        d, if d.LengthSquared() > 0.0f then 1.0f else 0.0f
+
+    let rotatedDir =
+      if dir.LengthSquared() > 0.0f then
+        Vector3.Transform(dir, Matrix.CreateRotationY(cameraYaw))
+      else
+        dir
+
+    let effectiveDir = rotatedDir * magnitude
+    let vel' = Internal.applyPhysics dt effectiveDir body.Velocity
 
     { body with Velocity = vel' }

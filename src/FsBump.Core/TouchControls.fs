@@ -7,19 +7,22 @@ open Mibo.Input
 
 module TouchLogic =
 
+  [<Struct>]
   type TouchZone =
     | LeftSide // Joystick
     | RightSide // Jump
 
+  [<Struct>]
   type JoystickState = {
     Center: Vector2
     Current: Vector2
-    ActiveId: int option
+    ActiveId: int voption
   }
 
+  [<Struct>]
   type State = {
     Joystick: JoystickState
-    JumpTouchId: int option
+    JumpTouchId: int voption
     IsNewJump: bool
     ScreenSize: Vector2
   }
@@ -28,9 +31,9 @@ module TouchLogic =
     Joystick = {
       Center = Vector2.Zero
       Current = Vector2.Zero
-      ActiveId = None
+      ActiveId = ValueNone
     }
-    JumpTouchId = None
+    JumpTouchId = ValueNone
     IsNewJump = false
     ScreenSize = screenSize
   }
@@ -48,14 +51,13 @@ module TouchLogic =
 
     // 1. Update Joystick
     match nextJoystick.ActiveId with
-    | Some id ->
+    | ValueSome id ->
       match touches |> Seq.tryFind(fun t -> t.Id = id) with
       | Some t when t.State <> TouchLocationState.Released ->
         let currentPos = t.Position
         let diff = currentPos - nextJoystick.Center
         let dist = diff.Length()
 
-        // Floating Joystick: Center follows if we move too far
         let nextCenter =
           if dist > maxJoystickRadius then
             currentPos - (Vector2.Normalize(diff) * maxJoystickRadius)
@@ -71,13 +73,13 @@ module TouchLogic =
         nextJoystick <- {
           Center = Vector2.Zero
           Current = Vector2.Zero
-          ActiveId = None
+          ActiveId = ValueNone
         }
-    | None -> ()
+    | ValueNone -> ()
 
     // 2. Update Jump
     match nextJumpId with
-    | Some id ->
+    | ValueSome id ->
       if
         not(
           touches
@@ -85,8 +87,8 @@ module TouchLogic =
             t.Id = id && t.State <> TouchLocationState.Released)
         )
       then
-        nextJumpId <- None
-    | None -> ()
+        nextJumpId <- ValueNone
+    | ValueNone -> ()
 
     // 3. Process New/Missed Touches
     for touch in touches do
@@ -97,11 +99,11 @@ module TouchLogic =
             nextJoystick <- {
               Center = touch.Position
               Current = touch.Position
-              ActiveId = Some touch.Id
+              ActiveId = ValueSome touch.Id
             }
         | RightSide ->
           if nextJumpId.IsNone then
-            nextJumpId <- Some touch.Id
+            nextJumpId <- ValueSome touch.Id
             isNewJump <- true
 
     {
@@ -111,55 +113,46 @@ module TouchLogic =
       ScreenSize = screenSize
     }
 
-  /// Map touch state to PlayerAction state
-  let toActionState(state: State) =
+  /// Map touch state to PlayerAction state and Analog Vector
+  let getEffectiveInput(state: State) =
     let mutable held = Set.empty
     let mutable started = Set.empty
+    let mutable analog = Vector2.Zero
 
     match state.Joystick.ActiveId with
-    | Some _ ->
+    | ValueSome _ ->
       let diff = state.Joystick.Current - state.Joystick.Center
-
-      // Activation threshold (how far to drag before moving starts)
+      let dist = diff.Length()
       let activationThreshold = 15.0f
 
-      if diff.Length() > activationThreshold then
-        let absX = abs diff.X
-        let absY = abs diff.Y
+      if dist > activationThreshold then
+        let rawDir = Vector2.Normalize(diff)
+        let absX = abs rawDir.X
+        let absY = abs rawDir.Y
+        let biasThreshold = 0.45f
 
-        // Horizontal/Vertical bias: If one axis is significantly stronger,
-        // snap to that axis for better cardinal control.
-        let biasRatio = 0.4f
-        let moveUp = diff.Y < -activationThreshold
-        let moveDown = diff.Y > activationThreshold
-        let moveLeft = diff.X < -activationThreshold
-        let moveRight = diff.X > activationThreshold
+        let biasedDir =
+          if absX < biasThreshold then
+            Vector2(0.0f, sign rawDir.Y |> float32)
+          elif absY < biasThreshold then
+            Vector2(sign rawDir.X |> float32, 0.0f)
+          else
+            rawDir
 
-        if absY > absX * biasRatio then
-          if moveUp then
-            held <- held.Add MoveForward
-
-          if moveDown then
-            held <- held.Add MoveBackward
-
-        if absX > absY * biasRatio then
-          if moveLeft then
-            held <- held.Add MoveLeft
-
-          if moveRight then
-            held <- held.Add MoveRight
-    | None -> ()
+        analog <- biasedDir
+    | ValueNone -> ()
 
     if state.IsNewJump then
       started <- started.Add Jump
 
     let baseInput: ActionState<PlayerAction> = ActionState.empty
 
-    {
-      baseInput with
-          Held = held
-          Started = started
-    }
+    struct ({
+              baseInput with
+                  Held = held
+                  Started = started
+            },
+            analog)
 
 open Mibo.Elmish.Graphics3D
 
@@ -189,7 +182,7 @@ module TouchUI =
     |> ValueOption.iter(fun texture ->
       // Draw Joystick
       match state.Joystick.ActiveId with
-      | Some _ ->
+      | ValueSome _ ->
         let center = state.Joystick.Center
         let current = state.Joystick.Current
         let offset = 48.0f
@@ -226,7 +219,7 @@ module TouchUI =
         |> Draw2D.withSource arrowRight
         |> Draw2D.submit buffer
 
-      | None -> ()
+      | ValueNone -> ()
 
       // Draw Jump Button Hint (Bottom Right)
       let jumpPos = screenSize - Vector2(96.0f, 96.0f)

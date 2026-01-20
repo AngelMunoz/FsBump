@@ -4,6 +4,7 @@ open Mibo.Elmish
 open Mibo.Input
 open Microsoft.Xna.Framework
 open Mibo.Rendering.Graphics3D
+open FsBump.Core.RootComposition
 
 module Player =
 
@@ -35,6 +36,7 @@ module Player =
         Radius = 0.5f
       }
       Input = ActionState.empty
+      AnalogDir = Microsoft.Xna.Framework.Vector2.Zero
       IsGrounded = false
       Rotation = Quaternion.Identity
       LastSafePosition = initialPos
@@ -43,20 +45,31 @@ module Player =
     /// Orchestrate one tick of player logic
     let updateTick
       (dt: float32)
-      (env: #IModelStoreProvider & #IAudioProvider)
-      (map: Tile list)
+      (cameraYaw: float32)
+      (env: AppEnv)
+      (map: Tile array)
       (model: PlayerModel)
       =
       let jumpRequested = model.Input.Started.Contains Jump
 
       // 1. Movement System
-      let bodyAfterMovement: Body = Movement.update dt model.Input model.Body
+      let bodyAfterMovement: Body =
+        Movement.update dt cameraYaw model.Input model.AnalogDir model.Body
 
       // 2. Physics System
-      let nearbyTiles =
-        map
-        |> List.filter(fun (t: Tile) ->
-          Vector3.DistanceSquared(t.Position, bodyAfterMovement.Position) < 1600.0f)
+      env.CollisionBuffer.Clear()
+
+      let cutoffSq = 1600.0f
+      let pos = bodyAfterMovement.Position
+
+      // Efficient filtering using ResizeArray
+      for i = 0 to map.Length - 1 do
+        let t = map.[i]
+
+        if Vector3.DistanceSquared(t.Position, pos) < cutoffSq then
+          env.CollisionBuffer.Add(t)
+
+      let nearbyTiles = env.CollisionBuffer
 
       let struct (bodyAfterPhysics, isGrounded, didJump) =
         Physics.updateBody
@@ -73,20 +86,31 @@ module Player =
 
       // 4. Safety & Respawn logic
       let killFloor =
-        if map.IsEmpty then
+        if map.Length = 0 then
           -20.0f
         else
-          (map |> List.minBy(fun t -> t.Position.Y)).Position.Y - 15.0f
+          let mutable minY = map.[0].Position.Y
 
-      let nextLastSafePos =
-        if isGrounded then
-          nearbyTiles
-          |> List.tryFind(fun t ->
-            Vector3.DistanceSquared(t.Position, bodyAfterPhysics.Position) < 16.0f)
-          |> Option.map(fun t -> t.Position + Vector3.Up * 1.0f)
-          |> Option.defaultValue model.LastSafePosition
-        else
-          model.LastSafePosition
+          for i = 1 to map.Length - 1 do
+            if map.[i].Position.Y < minY then
+              minY <- map.[i].Position.Y
+
+          minY - 15.0f
+
+      let mutable nextLastSafePos = model.LastSafePosition
+
+      if isGrounded then
+        let mutable foundSafe = false
+
+        for i = 0 to nearbyTiles.Count - 1 do
+          if not foundSafe then
+            let t = nearbyTiles.[i]
+
+            if
+              Vector3.DistanceSquared(t.Position, bodyAfterPhysics.Position) < 16.0f
+            then
+              nextLastSafePos <- t.Position + Vector3.Up * 1.0f
+              foundSafe <- true
 
       let model =
         if bodyAfterPhysics.Position.Y < killFloor then

@@ -6,6 +6,7 @@ open Mibo.Rendering.Graphics3D
 
 module Skybox =
 
+  [<Struct>]
   type State = { Time: float32 }
 
   let init() = { Time = 0.0f }

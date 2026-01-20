@@ -3,6 +3,7 @@ namespace FsBump.Core
 open System
 open Microsoft.Xna.Framework
 open Microsoft.Xna.Framework.Graphics
+open Microsoft.Xna.Framework.Input
 open Mibo.Elmish
 open Mibo.Rendering.Graphics3D
 open Mibo.Elmish.Graphics2D
@@ -16,9 +17,10 @@ module Program =
   // Model
   // ─────────────────────────────────────────────────────────────
 
+  [<Struct>]
   type Model = {
     Player: PlayerModel
-    Map: Tile list
+    Map: Tile array
     PathState: PathState
     Env: AppEnv
     Camera: Camera.State
@@ -62,6 +64,8 @@ module Program =
       ModelStore = modelStore
       Rng = Random.Shared
       Audio = Audio.create ctx
+      CollisionBuffer = ResizeArray<Tile>(100)
+      RenderBuffer = ResizeArray<RenderCommand>(200)
     }
 
     env.Audio.Play AmbientMusic
@@ -98,10 +102,18 @@ module Program =
       MapGenerator.generateSegment env initialPath [ startPlatform ] genConfig
 
     let t2, st2 =
-      MapGenerator.generateSegment env st1 (startPlatform :: t1) genConfig
+      MapGenerator.generateSegment
+        env
+        st1
+        (startPlatform :: (t1 |> Array.toList))
+        genConfig
 
     let t3, st3 =
-      MapGenerator.generateSegment env st2 (startPlatform :: t1 @ t2) genConfig
+      MapGenerator.generateSegment
+        env
+        st2
+        (startPlatform :: (t1 |> Array.toList) @ (t2 |> Array.toList))
+        genConfig
 
     let spawnVec = MapGenerator.getSpawnPoint()
     let player, pCmd = Player.init spawnVec
@@ -111,13 +123,12 @@ module Program =
 
     {
       Player = player
-      Map = [ startPlatform ] @ t1 @ t2 @ t3
+      Map =
+        [| startPlatform |]
+        |> (fun a -> Array.append a (Array.append t1 (Array.append t2 t3)))
       PathState = st3
       Env = env
-      Camera = {
-        Position = spawnVec + Vector3(0.0f, 10.0f, 10.0f)
-        Target = spawnVec
-      }
+      Camera = Camera.init spawnVec
       Skybox = skyState
       SkyboxEffect = skyEffect
       TouchState = TouchLogic.init screenSize
@@ -145,14 +156,14 @@ module Program =
           model.PathState
 
       match result with
-      | Some(map', path') ->
+      | ValueSome(map', path') ->
         {
           model with
               Map = map'
               PathState = path'
         },
         Cmd.none
-      | None -> model, Cmd.none
+      | ValueNone -> model, Cmd.none
     | Tick gt ->
       let dt = float32 gt.ElapsedGameTime.TotalSeconds
 
@@ -161,17 +172,36 @@ module Program =
         TouchLogic.update model.TouchState.ScreenSize model.TouchState
 
       // 2. Compute effective input for THIS frame (do not save merged state back to model)
-      let touchInput = TouchLogic.toActionState touchState'
+      let struct (touchInput, analogInput) =
+        TouchLogic.getEffectiveInput touchState'
+
       let effectiveInput = mergeInput model.Player.Input touchInput
 
-      // 3. Update player physics using effective input
-      let player', pCmd =
-        Player.Operations.updateTick dt model.Env model.Map {
-          model.Player with
-              Input = effectiveInput
-        }
+      // 3. Update Camera (Trailing)
+      let camera' =
+        Camera.update
+          dt
+          model.Player.Body.Position
+          model.Player.Body.Velocity
+          (not effectiveInput.Held.IsEmpty
+           || analogInput.LengthSquared() > 0.001f)
+          model.Camera
 
-      let camera' = Camera.update dt player'.Body.Position model.Camera
+      // 4. Update player physics using effective input and Camera Yaw
+      let playerModelForUpdate = {
+        model.Player with
+            Input = effectiveInput
+            AnalogDir = analogInput
+      }
+
+      let player', pCmd =
+        Player.Operations.updateTick
+          dt
+          camera'.Yaw
+          model.Env
+          model.Map
+          playerModelForUpdate
+
       let sky' = Skybox.update dt model.Skybox
 
       let genCmd =
@@ -186,8 +216,6 @@ module Program =
 
       {
         model with
-            // Preserve the original persistent input (keyboard),
-            // but update the body/state from physics result
             Player = {
               player' with
                   Input = model.Player.Input
@@ -286,8 +314,7 @@ module Program =
     |> Program.withPipeline
       (PipelineConfig.defaults
        |> PipelineConfig.withShadows(
-         ShadowConfig.defaults 
-         |> ShadowConfig.withBias 0.001f 0.005f
+         ShadowConfig.defaults |> ShadowConfig.withBias 0.001f 0.005f
        )
        |> PipelineConfig.withShader
          ShaderBase.ShadowCaster
@@ -305,10 +332,18 @@ module Program =
       game.Content.RootDirectory <- "Content"
       game.Window.Title <- "Procedural Map"
       game.IsMouseVisible <- true
+
+      // Set default resolution
+      graphics.PreferredBackBufferWidth <- 1280
+      graphics.PreferredBackBufferHeight <- 720
+      // Use borderless full screen to preserve desktop resolution
+      graphics.HardwareModeSwitch <- false
+
       graphics.PreferredDepthStencilFormat <- DepthFormat.Depth24
       graphics.PreferMultiSampling <- true
       graphics.SynchronizeWithVerticalRetrace <- true
 
       graphics.PreparingDeviceSettings.Add(fun e ->
         let pp = e.GraphicsDeviceInformation.PresentationParameters
-        pp.MultiSampleCount <- 8))
+        pp.MultiSampleCount <- 2
+        e.GraphicsDeviceInformation.GraphicsProfile <- GraphicsProfile.HiDef))

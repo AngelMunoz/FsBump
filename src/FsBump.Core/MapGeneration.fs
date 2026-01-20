@@ -414,13 +414,13 @@ module MapGenerator =
         )
 
       if not(Validation.checkOverlap tiles relevantObstacles config) then
-        tiles, nextState
+        tiles |> Array.ofList, nextState
       elif attempt < 5 then
         retry(attempt + 1)
       else
         let t, s = state |> SegmentStrategies.flatRun env 5
 
-        t,
+        t |> Array.ofList,
         {
           s with
               PreviousDirection = state.Direction
@@ -436,7 +436,7 @@ module MapGenerator =
     let updateMap
       (env: #IRandomProvider & #IModelStoreProvider)
       (playerPosition: Vector3)
-      (map: Tile list)
+      (map: Tile array)
       (pathState: PathState)
       =
       let map', state', generated =
@@ -449,37 +449,39 @@ module MapGenerator =
 
           let obstacles =
             map
-            |> List.filter(fun t ->
+            |> Array.filter(fun t ->
               Vector3.DistanceSquared(t.Position, pathState.Position) < 2500.0f)
+            |> Array.toList
 
           let newTiles, nextState =
             generateSegment env pathState obstacles config
 
-          map @ newTiles, nextState, true
+          Array.append map newTiles, nextState, true
         else
           map, pathState, false
 
       // Optimization: Cleanup distant tiles
       let finalMap =
         map'
-        |> List.filter(fun t ->
+        |> Array.filter(fun t ->
           Vector3.DistanceSquared(t.Position, playerPosition) < 40000.0f)
 
       if generated || finalMap.Length <> map.Length then
-        Some(finalMap, state')
+        ValueSome(finalMap, state')
       else
-        None
+        ValueNone
 
   let draw
     (env: #IModelStoreProvider)
     (frustum: BoundingFrustum)
-    (map: Tile list)
+    (map: Tile array)
     (buffer: PipelineBuffer<RenderCommand>)
     =
     buffer
       .DrawMany(
         [|
-          for tile in map do
+          for i = 0 to map.Length - 1 do
+            let tile = map.[i]
             let halfSize = tile.Size * 0.5f
 
             let box =

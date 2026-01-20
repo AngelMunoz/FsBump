@@ -11,8 +11,8 @@ module Physics =
     let StepHeight = 0.5f
     let SlopeSnapDistance = 1.0f
     let MoveSpeed = 10.0f
-    let Acceleration = 30.0f
-    let Friction = 20.0f
+    let Acceleration = 45.0f
+    let Friction = 35.0f
     let RollSpeed = 2.0f
 
   module private Math =
@@ -135,10 +135,12 @@ module Physics =
         if hit then ValueSome(p, v) else ValueNone)
 
   module private Steps =
+    open System.Collections.Generic
+
     /// Resolve vertical movement and collisions
     let verticalPass
       dt
-      (tiles: Tile list)
+      (tiles: IReadOnlyList<Tile>)
       (env: #IModelStoreProvider)
       (body: Body, grounded: bool)
       =
@@ -146,7 +148,9 @@ module Physics =
       let mutable vel = body.Velocity
       let mutable groundedNow = false
 
-      for t in tiles do
+      for i = 0 to tiles.Count - 1 do
+        let t = tiles.[i]
+
         let currentBody = {
           body with
               Position = pos
@@ -193,7 +197,7 @@ module Physics =
     let horizontalPass
       (isX: bool)
       (dt: float32)
-      (tiles: Tile list)
+      (tiles: IReadOnlyList<Tile>)
       (env: #IModelStoreProvider)
       (body: Body, grounded: bool)
       =
@@ -208,7 +212,9 @@ module Physics =
         let mutable collided, groundedNow, finalPos, finalVel =
           false, grounded, nextPos, body.Velocity
 
-        for t in tiles do
+        for i = 0 to tiles.Count - 1 do
+          let t = tiles.[i]
+
           match t.Type with
           | TileType.SlopeTile
           | TileType.Decoration ->
@@ -267,7 +273,7 @@ module Physics =
   let updateBody
     (dt: float32)
     (body: Body)
-    (nearbyTiles: Tile list)
+    (nearbyTiles: System.Collections.Generic.IReadOnlyList<Tile>)
     (env: #IModelStoreProvider)
     (jumpRequested: bool)
     (isGrounded: bool)
