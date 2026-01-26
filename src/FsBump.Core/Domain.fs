@@ -32,9 +32,30 @@ type TileType =
 [<Measure>]
 type PathId
 
+type BranchComplexity =
+  | Low
+  | Medium
+  | High
+
+type ColorVariant =
+  | Blue
+  | Green
+  | Red
+  | Yellow
+  | Neutral
+
+module ColorVariant =
+  let asString =
+    function
+    | Blue -> "blue"
+    | Green -> "green"
+    | Red -> "red"
+    | Yellow -> "yellow"
+    | Neutral -> "neutral"
+
 type FiniteModeConfig = {
-  Duration: int // Duration in seconds (e.g., 120-300)
-  BranchComplexity: int // 1-3, controls number of branches
+  Duration: TimeSpan // Duration in seconds (e.g., 120-300)
+  BranchComplexity: BranchComplexity
   Difficulty: float32 // 0.0-1.0
 }
 
@@ -49,7 +70,7 @@ type PathState = {
   Direction: Vector3
   PreviousDirection: Vector3
   Width: int
-  CurrentColor: int
+  CurrentColor: ColorVariant
   IsActive: bool
   IsMainPath: bool
   ParentPathId: Guid<PathId> voption
@@ -64,7 +85,7 @@ type Tile = {
   Collision: CollisionType
   Position: Vector3
   Rotation: float32
-  Variant: int
+  Variant: ColorVariant
   Size: Vector3
   Style: int
   AssetName: string

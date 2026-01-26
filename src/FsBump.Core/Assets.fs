@@ -138,21 +138,14 @@ module Assets =
   let skyboxEffect(ctx: Mibo.Elmish.GameContext) =
     Assets.effect "Effects/NightSky" ctx
 
-  let private getColor variant =
-    match variant % 4 with
-    | 0 -> "blue"
-    | 1 -> "green"
-    | 2 -> "red"
-    | _ -> "yellow"
-
   let getAsset(tile: Tile) =
     if not(String.IsNullOrEmpty tile.AssetName) then
-      let color = getColor tile.Variant
-      sprintf "kaykit_platformer/%s/%s_%s" color tile.AssetName color
+      let colorStr = ColorVariant.asString tile.Variant
+      $"kaykit_platformer/%s{colorStr}/%s{tile.AssetName}_%s{colorStr}"
     else
-      let color = getColor tile.Variant
+      let color = ColorVariant.asString tile.Variant
 
       match tile.Type with
       | TileType.Floor ->
-        sprintf "kaykit_platformer/%s/platform_1x1x1_%s" color color
+        $"kaykit_platformer/%s{color}/platform_1x1x1_%s{color}"
       | _ -> ""

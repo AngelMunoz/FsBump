@@ -9,84 +9,57 @@ open FSharp.UMX
 
 module TileBuilder =
 
-  let create
-    type'
-    collision
-    pos
-    rot
-    variant
-    size
-    style
-    asset
-    offset
-    pathId
-    segIndex
-    =
+  let getAssetData asset (color: ColorVariant) (env: #IModelStoreProvider) =
+    let colorStr =
+      match color with
+      | Blue -> "blue"
+      | Green -> "green"
+      | Red -> "red"
+      | Yellow -> "yellow"
+      | Neutral -> ""
+
+    let full = sprintf "kaykit_platformer/%s/%s_%s" colorStr asset colorStr
+
+    match env.ModelStore.GetBounds full with
+    | ValueSome b -> b.Max - b.Min, (b.Min + b.Max) * -0.5f, asset
+    | ValueNone ->
+      // Fallback for neutral assets (no color suffix)
+      match
+        env.ModelStore.GetBounds(sprintf "kaykit_platformer/neutral/%s" asset)
+      with
+      | ValueSome b -> b.Max - b.Min, (b.Min + b.Max) * -0.5f, asset
+      | ValueNone -> Vector3.One, Vector3(0.0f, -0.5f, 0.0f), asset
+
+  let floor pos color (env: #IModelStoreProvider) pathId segIndex =
+    let size, offset, asset = getAssetData "platform_1x1x1" color env
+
     {
-      Type = type'
-      Collision = collision
+      Type = TileType.Floor
+      Collision = CollisionType.Solid
       Position = pos
-      Rotation = rot
-      Variant = variant
+      Rotation = 0.0f
+      Variant = color
       Size = size
-      Style = style
+      Style = 0
       AssetName = asset
       VisualOffset = offset
       PathId = pathId
       SegmentIndex = segIndex
     }
 
-  let getAssetData asset color (env: #IModelStoreProvider) =
-    let colorStr =
-      match color % 4 with
-      | 0 -> "blue"
-      | 1 -> "green"
-      | 2 -> "red"
-      | _ -> "yellow"
-
-    let full = sprintf "kaykit_platformer/%s/%s_%s" colorStr asset colorStr
-
-    match env.ModelStore.GetBounds full with
-    | ValueSome b ->
-      b.Max - b.Min, VectorMath.mul (VectorMath.add b.Min b.Max) -0.5f, asset
-    | ValueNone ->
-      // Fallback for neutral assets (no color suffix)
-      match
-        env.ModelStore.GetBounds(sprintf "kaykit_platformer/neutral/%s" asset)
-      with
-      | ValueSome b ->
-        b.Max - b.Min, VectorMath.mul (VectorMath.add b.Min b.Max) -0.5f, asset
-      | ValueNone -> Vector3.One, VectorMath.create 0.0f -0.5f 0.0f, asset
-
-  let floor pos color (env: #IModelStoreProvider) pathId segIndex =
-    let size, offset, asset = getAssetData "platform_1x1x1" color env
-
-    create
-      TileType.Floor
-      CollisionType.Solid
-      pos
-      0.0f
-      color
-      size
-      0
-      asset
-      offset
-      pathId
-      segIndex
-
-  let wall pos color size asset offset pathId segIndex =
-    create
-      TileType.Wall
-      CollisionType.Solid
-      pos
-      0.0f
-      color
-      size
-      0
-      asset
-      offset
-      pathId
-      segIndex
+  let wall pos color size asset offset pathId segIndex = {
+    Type = TileType.Wall
+    Collision = CollisionType.Solid
+    Position = pos
+    Rotation = 0.0f
+    Variant = color
+    Size = size
+    Style = 0
+    AssetName = asset
+    VisualOffset = offset
+    PathId = pathId
+    SegmentIndex = segIndex
+  }
 
   let decoration
     pos
@@ -100,49 +73,61 @@ module TileBuilder =
     pathId
     segIndex
     =
-    create type' collision pos rot color size 0 asset offset pathId segIndex
+    {
+      Type = type'
+      Collision = collision
+      Position = pos
+      Rotation = rot
+      Variant = color
+      Size = size
+      Style = 0
+      AssetName = asset
+      VisualOffset = offset
+      PathId = pathId
+      SegmentIndex = segIndex
+    }
 
-  let platform pos color size assetName offset pathId segIndex =
-    create
-      TileType.Platform
-      CollisionType.Solid
-      pos
-      0.0f
-      color
-      size
-      0
-      assetName
-      offset
-      pathId
-      segIndex
+  let platform pos color size assetName offset pathId segIndex = {
+    Type = TileType.Platform
+    Collision = CollisionType.Solid
+    Position = pos
+    Rotation = 0.0f
+    Variant = color
+    Size = size
+    Style = 0
+    AssetName = assetName
+    VisualOffset = offset
+    PathId = pathId
+    SegmentIndex = segIndex
+  }
 
-  let collectible pos color size asset offset pathId segIndex =
-    create
-      TileType.Collectible
-      CollisionType.Passthrough
-      pos
-      0.0f
-      color
-      size
-      0
-      asset
-      offset
-      pathId
-      segIndex
+  let collectible pos color size asset offset pathId segIndex = {
+    Type = TileType.Collectible
+    Collision = CollisionType.Passthrough
+    Position = pos
+    Rotation = 0.0f
+    Variant = color
+    Size = size
+    Style = 0
+    AssetName = asset
+    VisualOffset = offset
+    PathId = pathId
+    SegmentIndex = segIndex
+  }
 
-  let slope pos rot color size asset offset pathId segIndex =
-    create
-      TileType.SlopeTile
-      CollisionType.Slope
-      pos
-      rot
-      color
-      size
-      0
-      asset
-      offset
-      pathId
-      segIndex
+  let slope pos rot color size asset offset pathId segIndex = {
+    Type = TileType.SlopeTile
+    Collision = CollisionType.Slope
+    Position = pos
+    Rotation = rot
+    Variant = color
+    Size = size
+    Style = 0
+    AssetName = asset
+    VisualOffset = offset
+    PathId = pathId
+    SegmentIndex = segIndex
+  }
 
 // ─────────────────────────────────────────────────────────────
 // Building Blocks
@@ -153,49 +138,43 @@ module BuildingBlocks =
   let addEdgeDetails
     (env: #IRandomProvider & #IModelStoreProvider)
     (pos: Vector3)
-    (color: int)
+    (color: ColorVariant)
     (isLeft: bool)
     (tiles: ResizeArray<Tile>)
-    (mode: string)
+    (mode: TerrainAssets.TerrainAssets)
     (pathId: Guid<PathId>)
     (segIndex: int)
     =
     let roll = env.Random.NextDouble()
 
-    let barrierProb = if mode = "Challenge" then 0.3 else 0.15
-    let decoProb = if mode = "Exploration" then 0.5 else 0.3
+    let barrierProb = if mode.IsChallenge then 0.3 else 0.15
+    let decoProb = if mode.IsExploration then 0.5 else 0.3
+    let assets = TerrainAssets.getAssetsByMode mode
 
     if roll < barrierProb then
-      let assets =
-        TerrainAssets.getAssetsByMode mode
-        |> Array.filter(fun a -> a.StartsWith("barrier"))
+      let assets = assets.Barriers
 
       let asset =
         if assets.Length > 0 then
-          assets.[env.Random.Next(assets.Length)]
+          assets[env.Random.Next assets.Length]
         else
           "barrier_1x1x1"
 
       let size, offset, assetName = TileBuilder.getAssetData asset color env
 
       let shiftY = size.Y * 0.5f + 0.5f
-      let shift = VectorMath.create 0.0f shiftY 0.0f
-      let finalPos = VectorMath.add pos shift
+      let shift = Vector3(0.0f, shiftY, 0.0f)
+      let finalPos = pos + shift
 
       tiles.Add(
         TileBuilder.wall finalPos color size assetName offset pathId segIndex
       )
     elif roll < decoProb then
-      let assets =
-        TerrainAssets.getAssetsByMode mode
-        |> Array.filter(fun a ->
-          a.StartsWith("flag")
-          || a.StartsWith("signage")
-          || a.StartsWith("railing"))
+      let assets = assets.Decorations
 
       let asset =
         if assets.Length > 0 then
-          assets.[env.Random.Next(assets.Length)]
+          assets[env.Random.Next assets.Length]
         else
           "flag_A"
 
@@ -203,8 +182,8 @@ module BuildingBlocks =
       let rot = if isLeft then -MathHelper.PiOver2 else MathHelper.PiOver2
 
       let shiftY = size.Y * 0.5f + 0.5f
-      let shift = VectorMath.create 0.0f shiftY 0.0f
-      let finalPos = VectorMath.add pos shift
+      let shift = Vector3(0.0f, shiftY, 0.0f)
+      let finalPos = pos + shift
 
       tiles.Add(
         TileBuilder.decoration
@@ -224,15 +203,15 @@ module BuildingBlocks =
     (env: #IRandomProvider & #IModelStoreProvider)
     (tiles: ResizeArray<Tile>)
     (state: PathState)
-    (mode: string)
+    (mode: TerrainAssets.TerrainAssets)
     =
     let nextState = state |> StateOps.advance 1.0f
     let right = Vector3.Cross(Vector3.Up, state.Direction)
 
     for w in -state.Width .. state.Width do
       let fw = float32 w
-      let offset = VectorMath.mul right fw
-      let tilePos = VectorMath.add nextState.Position offset
+      let offset = right * fw
+      let tilePos = nextState.Position + offset
 
       tiles.Add(
         TileBuilder.floor
@@ -261,17 +240,16 @@ module BuildingBlocks =
     (tiles: ResizeArray<Tile>)
     (prevHalf: float32)
     (state: PathState)
-    (mode: string)
+    (mode: TerrainAssets.TerrainAssets)
     =
     let goUp = env.Random.NextDouble() > 0.5
+    let assets = TerrainAssets.getAssetsByMode mode
 
-    let slopeAssets =
-      TerrainAssets.getAssetsByMode mode
-      |> Array.filter(fun a -> a.Contains("slope"))
+    let slopeAssets = assets.Slopes
 
     let assetName =
       if slopeAssets.Length > 0 then
-        slopeAssets.[env.Random.Next(slopeAssets.Length)]
+        slopeAssets[env.Random.Next slopeAssets.Length]
       else
         "platform_slope_4x2x2"
 
@@ -280,7 +258,7 @@ module BuildingBlocks =
 
     let currentHalf = size.Z * 0.5f
 
-    let gapChance = if mode = "Challenge" then 0.4 else 0.2
+    let gapChance = if mode.IsChallenge then 0.4 else 0.2
     let gap = if env.Random.NextDouble() < gapChance then 2.0f else -0.25f
 
     let dist = prevHalf + currentHalf + gap
@@ -300,11 +278,10 @@ module BuildingBlocks =
 
     let finalRot = if goUp then rot else rot + MathHelper.Pi
 
-    let moveVec = VectorMath.mul state.Direction dist
-    let vertVec = VectorMath.create 0.0f (size.Y * 0.5f + 0.5f + yOffset) 0.0f
+    let moveVec = state.Direction * dist
+    let vertVec = Vector3(0.0f, size.Y * 0.5f + 0.5f + yOffset, 0.0f)
 
-    let slopeCenter =
-      VectorMath.add (VectorMath.add state.Position moveVec) vertVec
+    let slopeCenter = state.Position + moveVec + vertVec
 
     tiles.Add(
       TileBuilder.slope
@@ -327,24 +304,23 @@ module BuildingBlocks =
     (env: #IRandomProvider & #IModelStoreProvider)
     (tiles: ResizeArray<Tile>)
     (state: PathState)
-    (mode: string)
+    (mode: TerrainAssets.TerrainAssets)
     =
     let gapSize =
-      if mode = "Challenge" then
+      if mode.IsChallenge then
         env.Random.Next(3, 6) // Harder jumps
       else if env.Random.NextDouble() < 0.8 then
         env.Random.Next(1, 3)
       else
         env.Random.Next(3, 5)
 
-    let platformAssets =
-      TerrainAssets.getAssetsByMode mode
-      |> Array.filter(fun a ->
-        a.StartsWith("platform") && not(a.Contains("slope")))
+    let assets = TerrainAssets.getAssetsByMode mode
+    let platformAssets = assets.Platforms
+
 
     let asset =
       if platformAssets.Length > 0 then
-        platformAssets.[env.Random.Next(platformAssets.Length)]
+        platformAssets[env.Random.Next platformAssets.Length]
       else
         "platform_4x4x1"
 
@@ -358,9 +334,9 @@ module BuildingBlocks =
     let verticalAdjust = 0.5f - (size.Y * 0.5f)
     let totalHeightChange = heightChange + verticalAdjust
 
-    let moveVec = VectorMath.mul state.Direction dist
-    let vertVec = VectorMath.create 0.0f totalHeightChange 0.0f
-    let nextPos = VectorMath.add (VectorMath.add state.Position moveVec) vertVec
+    let moveVec = state.Direction * dist
+    let vertVec = Vector3(0.0f, totalHeightChange, 0.0f)
+    let nextPos = state.Position + moveVec + vertVec
 
     tiles.Add(
       TileBuilder.platform
@@ -373,13 +349,10 @@ module BuildingBlocks =
         state.NextSegmentIndex
     )
 
-    let logicalMoveVec = VectorMath.mul state.Direction dist
-    let logicalVertVec = VectorMath.create 0.0f heightChange 0.0f
+    let logicalMoveVec = state.Direction * dist
+    let logicalVertVec = Vector3(0.0f, heightChange, 0.0f)
 
-    let logicalNextPos =
-      VectorMath.add
-        (VectorMath.add state.Position logicalMoveVec)
-        logicalVertVec
+    let logicalNextPos = state.Position + logicalMoveVec + logicalVertVec
 
     { state with Position = logicalNextPos }
     |> StateOps.advance(size.Z * 0.5f - 0.5f)
@@ -394,7 +367,7 @@ module SegmentStrategies =
     (env: #IRandomProvider & #IModelStoreProvider)
     (length: int)
     (state: PathState)
-    (mode: string)
+    (mode: TerrainAssets.TerrainAssets)
     =
     let tiles = ResizeArray<Tile>()
     let mutable s = state
@@ -416,7 +389,7 @@ module SegmentStrategies =
     (env: #IRandomProvider & #IModelStoreProvider)
     (length: int)
     (state: PathState)
-    (mode: string)
+    (mode: TerrainAssets.TerrainAssets)
     =
     let tiles = ResizeArray<Tile>()
     let mutable s = state
@@ -437,7 +410,7 @@ module SegmentStrategies =
     (env: #IRandomProvider & #IModelStoreProvider)
     (count: int)
     (state: PathState)
-    (mode: string)
+    (mode: TerrainAssets.TerrainAssets)
     =
     let tiles = ResizeArray<Tile>()
     let mutable s = state

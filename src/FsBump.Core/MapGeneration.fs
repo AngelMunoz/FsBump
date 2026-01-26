@@ -39,7 +39,6 @@ module MapGenerator =
             |> Array.filter(fun t ->
               // Optimize collision check to nearby tiles
               Vector3.DistanceSquared(t.Position, playerPosition) < 2500.0f)
-            |> Array.toList
 
           InfiniteMode.generate env pathGraph playerPosition obstacles config
 

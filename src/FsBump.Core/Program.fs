@@ -73,7 +73,8 @@ module Program =
     let skyEffect = Assets.skyboxEffect ctx
     let skyState = Skybox.init()
 
-    let sSize, sOffset, sAsset = TileBuilder.getAssetData "platform_4x4x1" 0 env
+    let sSize, sOffset, sAsset =
+      TileBuilder.getAssetData "platform_4x4x1" ColorVariant.Blue env
 
     // Initialize Infinite Mode
     let initialGraph =
@@ -86,7 +87,7 @@ module Program =
       Collision = CollisionType.Solid
       Position = Vector3.Zero
       Rotation = 0.0f
-      Variant = 0
+      Variant = ColorVariant.Blue
       Size = sSize
       Style = 0
       AssetName = sAsset
@@ -105,9 +106,7 @@ module Program =
       let result =
         MapGenerator.Operations.updateMap
           env
-          (VectorMath.add
-            Vector3.Zero
-            (VectorMath.create 0.0f 0.0f (float32(-i * 20))))
+          (Vector3.Zero + Vector3(0.0f, 0.0f, float32(-i * 20)))
           currentMap
           currentGraph
 

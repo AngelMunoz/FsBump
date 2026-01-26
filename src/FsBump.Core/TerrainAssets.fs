@@ -2,6 +2,37 @@ namespace FsBump.Core
 
 module TerrainAssets =
 
+  type Collections = {
+    Platforms: string[]
+    Slopes: string[]
+    Barriers: string[]
+    Arches: string[]
+    Pipes: string[]
+    Interactive: string[]
+    Collectibles: string[]
+    Decorations: string[]
+    Pillars: string[]
+  }
+
+  module Collections =
+    let empty = {
+      Platforms = Array.empty
+      Slopes = Array.empty
+      Barriers = Array.empty
+      Arches = Array.empty
+      Pipes = Array.empty
+      Interactive = Array.empty
+      Collectibles = Array.empty
+      Decorations = Array.empty
+      Pillars = Array.empty
+    }
+
+  [<Struct>]
+  type TerrainAssets =
+    | Exploration
+    | Challenge
+    | Infinite
+
   // Platforms (all sizes: 1x1x1 to 6x6x4)
   let platforms = [|
     "platform_1x1x1"
@@ -132,24 +163,49 @@ module TerrainAssets =
   |]
 
   // Get assets by game mode
-  let getAssetsByMode(modeName: string) =
+  let getAssetsByMode(modeName: TerrainAssets) =
     // Placeholder for phase 2 logic
     match modeName with
-    | "Exploration" ->
-      // More decorations, wider paths, arches, collectibles
-      Array.concat [| platforms; slopes; arches; collectibles; decorations |]
-    | "Challenge" ->
-      // More barriers, narrower paths, technical platforms
-      Array.concat [| platforms; slopes; barriers; interactive; pillars |]
-    | "Infinite" ->
-      // Balanced mix
-      Array.concat [|
-        platforms
-        slopes
-        barriers
-        arches
-        interactive
-        collectibles
-        decorations
-      |]
-    | _ -> Array.concat [| platforms; slopes |]
+    | Exploration ->
+        // More decorations, wider paths, arches, collectibles
+        {
+          Collections.empty with
+              Platforms = platforms
+              Slopes = slopes
+              Arches = arches
+              Collectibles = collectibles
+              Decorations = decorations
+        }
+
+    | Challenge ->
+        // More barriers, narrower paths, technical platforms
+
+        {
+          Collections.empty with
+              Barriers = barriers
+              Pipes = pipes
+              Interactive = interactive
+              Pillars = pillars
+        }
+
+    | Infinite ->
+        // Balanced mix
+        {
+          Collections.empty with
+              Platforms = platforms
+              Slopes = slopes
+              Barriers = barriers
+              Arches = arches
+              Interactive = interactive
+              Collectibles = collectibles
+              Decorations = decorations
+        }
+
+
+  let getNextColor(current: ColorVariant) =
+    match current with
+    | ColorVariant.Blue -> ColorVariant.Green
+    | ColorVariant.Green -> ColorVariant.Red
+    | ColorVariant.Red -> ColorVariant.Yellow
+    | ColorVariant.Yellow -> ColorVariant.Blue
+    | ColorVariant.Neutral -> ColorVariant.Blue

@@ -9,7 +9,7 @@ module InfiniteMode =
     (env: #IRandomProvider & #IModelStoreProvider)
     (pathGraph: PathGraph)
     (playerPos: Vector3)
-    (obstacles: Tile list)
+    (obstacles: Tile[])
     (config: GenerationConfig)
     =
 
@@ -30,7 +30,7 @@ module InfiniteMode =
         let rec retry attempt =
           let segmentType = env.Random.Next(0, 4)
           let length = env.Random.Next(10, 20)
-          let modeName = "Infinite"
+          let modeName = TerrainAssets.Infinite
 
           let tiles, endState =
             match segmentType with
@@ -42,7 +42,7 @@ module InfiniteMode =
           let nextState =
             {
               endState with
-                  CurrentColor = (path.CurrentColor + 1) % 4
+                  CurrentColor = TerrainAssets.getNextColor path.CurrentColor
             }
             |> StateOps.turn(
               match env.Random.Next(0, 3) with
@@ -52,9 +52,7 @@ module InfiniteMode =
             )
 
           // Overlap check
-          if
-            not(Validation.checkOverlap (List.ofArray tiles) obstacles config)
-          then
+          if not(Validation.checkOverlap (tiles) obstacles config) then
             // Success
             newTiles.AddRange(tiles)
             graph <- PathGraphSystem.updatePathState graph nextState
@@ -74,10 +72,11 @@ module InfiniteMode =
                   )
 
               let branchDirRounded =
-                VectorMath.create
-                  (MathF.Round(branchDir.X))
-                  (MathF.Round(branchDir.Y))
-                  (MathF.Round(branchDir.Z))
+                Vector3(
+                  MathF.Round branchDir.X,
+                  MathF.Round branchDir.Y,
+                  MathF.Round branchDir.Z
+                )
 
               graph <-
                 PathGraphSystem.addBranch

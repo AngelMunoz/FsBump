@@ -76,27 +76,28 @@ module Physics =
     /// Maps a tile to its full asset path
     let getAssetId(tile: Tile) =
       let color =
-        match tile.Variant % 4 with
-        | 0 -> "blue"
-        | 1 -> "green"
-        | 2 -> "red"
-        | _ -> "yellow"
+        match tile.Variant with
+        | ColorVariant.Blue -> "blue"
+        | ColorVariant.Green -> "green"
+        | ColorVariant.Red -> "red"
+        | ColorVariant.Neutral
+        | ColorVariant.Yellow -> "yellow"
 
       if String.IsNullOrEmpty tile.AssetName then
         ""
       elif tile.AssetName.Contains("/") then
         tile.AssetName
       else
-        sprintf "kaykit_platformer/%s/%s_%s" color tile.AssetName color
+        $"kaykit_platformer/%s{color}/%s{tile.AssetName}_%s{color}"
 
     /// Resolves collision against mesh geometry
     let resolve (body: Body) (tile: Tile) (env: #IModelStoreProvider) =
       env.ModelStore.GetGeometry(getAssetId tile)
       |> ValueOption.bind(fun geo ->
         let world =
-          Matrix.CreateTranslation(tile.VisualOffset)
-          * Matrix.CreateRotationY(tile.Rotation)
-          * Matrix.CreateTranslation(tile.Position)
+          Matrix.CreateTranslation tile.VisualOffset
+          * Matrix.CreateRotationY tile.Rotation
+          * Matrix.CreateTranslation tile.Position
 
         let mutable p, v, hit = body.Position, body.Velocity, false
         let half = tile.Size * 0.5f
