@@ -53,6 +53,49 @@ module ColorVariant =
     | Yellow -> "yellow"
     | Neutral -> "neutral"
 
+type AssetLocation =
+  | Colored of string
+  | Neutral of string
+
+type AssetDefinition = {
+  Name: string
+  Location: AssetLocation
+}
+
+module AssetDefinition =
+  let getLoadPath (asset: AssetDefinition) (variant: ColorVariant) =
+    let colorStr = ColorVariant.asString variant
+
+    match asset.Location with
+    | Colored name ->
+      match name with
+      | "button_base" ->
+        sprintf
+          "kaykit_platformer/%s/button_base_%s_button_%s"
+          colorStr
+          colorStr
+          colorStr
+      | "lever_floor_base" ->
+        sprintf
+          "kaykit_platformer/%s/lever_floor_base_%s_lever_floor_%s"
+          colorStr
+          colorStr
+          colorStr
+      | "lever_wall_base_A" ->
+        sprintf
+          "kaykit_platformer/%s/lever_wall_base_A_%s_lever_wall_A_%s"
+          colorStr
+          colorStr
+          colorStr
+      | "lever_wall_base_B" ->
+        sprintf
+          "kaykit_platformer/%s/lever_wall_base_B_%s_lever_wall_B_%s"
+          colorStr
+          colorStr
+          colorStr
+      | _ -> sprintf "kaykit_platformer/%s/%s_%s" colorStr name colorStr
+    | Neutral name -> sprintf "kaykit_platformer/neutral/%s" name
+
 type FiniteModeConfig = {
   Duration: TimeSpan // Duration in seconds (e.g., 120-300)
   BranchComplexity: BranchComplexity

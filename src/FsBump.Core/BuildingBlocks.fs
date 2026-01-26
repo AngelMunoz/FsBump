@@ -9,24 +9,25 @@ open FSharp.UMX
 
 module TileBuilder =
 
-  let getAssetData asset (color: ColorVariant) (env: #IModelStoreProvider) =
-    let colorStr =
-      match color with
-      | Blue -> "blue"
-      | Green -> "green"
-      | Red -> "red"
-      | Yellow -> "yellow"
-      | Neutral -> ""
+  let getAssetPath(assetName: string, color: ColorVariant) =
+    let assetDef = {
+      Name = assetName
+      Location =
+        if color = ColorVariant.Neutral
+        then Neutral assetName
+        else Colored assetName
+    }
+    AssetDefinition.getLoadPath assetDef color
 
-    let full = sprintf "kaykit_platformer/%s/%s_%s" colorStr asset colorStr
+  let getAssetData asset (color: ColorVariant) (env: #IModelStoreProvider) =
+    let full = getAssetPath(asset, color)
 
     match env.ModelStore.GetBounds full with
     | ValueSome b -> b.Max - b.Min, (b.Min + b.Max) * -0.5f, asset
     | ValueNone ->
-      // Fallback for neutral assets (no color suffix)
-      match
-        env.ModelStore.GetBounds(sprintf "kaykit_platformer/neutral/%s" asset)
-      with
+      // Fallback for neutral assets
+      let neutralPath = sprintf "kaykit_platformer/neutral/%s" asset
+      match env.ModelStore.GetBounds neutralPath with
       | ValueSome b -> b.Max - b.Min, (b.Min + b.Max) * -0.5f, asset
       | ValueNone -> Vector3.One, Vector3(0.0f, -0.5f, 0.0f), asset
 
@@ -156,7 +157,7 @@ module BuildingBlocks =
 
       let asset =
         if assets.Length > 0 then
-          assets[env.Random.Next assets.Length]
+          (assets[env.Random.Next assets.Length]).Name
         else
           "barrier_1x1x1"
 
@@ -174,7 +175,7 @@ module BuildingBlocks =
 
       let asset =
         if assets.Length > 0 then
-          assets[env.Random.Next assets.Length]
+          (assets[env.Random.Next assets.Length]).Name
         else
           "flag_A"
 
@@ -249,7 +250,7 @@ module BuildingBlocks =
 
     let assetName =
       if slopeAssets.Length > 0 then
-        slopeAssets[env.Random.Next slopeAssets.Length]
+        (slopeAssets[env.Random.Next slopeAssets.Length]).Name
       else
         "platform_slope_4x2x2"
 
@@ -320,7 +321,7 @@ module BuildingBlocks =
 
     let asset =
       if platformAssets.Length > 0 then
-        platformAssets[env.Random.Next platformAssets.Length]
+        (platformAssets[env.Random.Next platformAssets.Length]).Name
       else
         "platform_4x4x1"
 

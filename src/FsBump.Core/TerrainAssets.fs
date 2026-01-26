@@ -3,15 +3,16 @@ namespace FsBump.Core
 module TerrainAssets =
 
   type Collections = {
-    Platforms: string[]
-    Slopes: string[]
-    Barriers: string[]
-    Arches: string[]
-    Pipes: string[]
-    Interactive: string[]
-    Collectibles: string[]
-    Decorations: string[]
-    Pillars: string[]
+    Platforms: AssetDefinition[]
+    Slopes: AssetDefinition[]
+    Barriers: AssetDefinition[]
+    Arches: AssetDefinition[]
+    Pipes: AssetDefinition[]
+    Interactive: AssetDefinition[]
+    Collectibles: AssetDefinition[]
+    Decorations: AssetDefinition[]
+    Pillars: AssetDefinition[]
+    NeutralSpecial: AssetDefinition[]
   }
 
   module Collections =
@@ -25,6 +26,7 @@ module TerrainAssets =
       Collectibles = Array.empty
       Decorations = Array.empty
       Pillars = Array.empty
+      NeutralSpecial = Array.empty
     }
 
   [<Struct>]
@@ -33,141 +35,161 @@ module TerrainAssets =
     | Challenge
     | Infinite
 
-  // Platforms (all sizes: 1x1x1 to 6x6x4)
   let platforms = [|
-    "platform_1x1x1"
-    "platform_1x1x2"
-    "platform_1x1x4"
-    "platform_2x2x1"
-    "platform_2x2x2"
-    "platform_2x2x4"
-    "platform_4x2x1"
-    "platform_4x2x2"
-    "platform_4x2x4"
-    "platform_4x4x1"
-    "platform_4x4x2"
-    "platform_4x4x4"
-    "platform_6x2x1"
-    "platform_6x2x2"
-    "platform_6x2x4"
-    "platform_6x6x1"
-    "platform_6x6x2"
-    "platform_6x6x4"
-    "platform_decorative_1x1x1"
-    "platform_decorative_2x2x2"
-    "platform_arrow_2x2x1"
-    "platform_arrow_4x4x1"
-    "platform_arrow_6x6x1"
-    "platform_hole_6x6x1"
+    { Name = "platform_1x1x1"; Location = Colored "platform_1x1x1" }
+    { Name = "platform_2x2x1"; Location = Colored "platform_2x2x1" }
+    { Name = "platform_2x2x2"; Location = Colored "platform_2x2x2" }
+    { Name = "platform_2x2x4"; Location = Colored "platform_2x2x4" }
+    { Name = "platform_4x2x1"; Location = Colored "platform_4x2x1" }
+    { Name = "platform_4x2x2"; Location = Colored "platform_4x2x2" }
+    { Name = "platform_4x2x4"; Location = Colored "platform_4x2x4" }
+    { Name = "platform_4x4x1"; Location = Colored "platform_4x4x1" }
+    { Name = "platform_4x4x2"; Location = Colored "platform_4x4x2" }
+    { Name = "platform_4x4x4"; Location = Colored "platform_4x4x4" }
+    { Name = "platform_6x2x1"; Location = Colored "platform_6x2x1" }
+    { Name = "platform_6x2x2"; Location = Colored "platform_6x2x2" }
+    { Name = "platform_6x2x4"; Location = Colored "platform_6x2x4" }
+    { Name = "platform_6x6x1"; Location = Colored "platform_6x6x1" }
+    { Name = "platform_6x6x2"; Location = Colored "platform_6x6x2" }
+    { Name = "platform_6x6x4"; Location = Colored "platform_6x6x4" }
+    { Name = "platform_decorative_1x1x1"; Location = Colored "platform_decorative_1x1x1" }
+    { Name = "platform_decorative_2x2x2"; Location = Colored "platform_decorative_2x2x2" }
+    { Name = "platform_arrow_2x2x1"; Location = Colored "platform_arrow_2x2x1" }
+    { Name = "platform_arrow_4x4x1"; Location = Colored "platform_arrow_4x4x1" }
+    { Name = "platform_decorative_1x1x1"; Location = Colored "platform_decorative_1x1x1" }
+    { Name = "platform_decorative_2x2x2"; Location = Colored "platform_decorative_2x2x2" }
+    { Name = "platform_hole_6x6x1"; Location = Colored "platform_hole_6x6x1" }
   |]
 
-  // Slopes (9 sizes: 2x2x2 to 6x6x4)
   let slopes = [|
-    "platform_slope_2x2x2"
-    "platform_slope_2x4x4"
-    "platform_slope_2x6x4"
-    "platform_slope_4x2x2"
-    "platform_slope_4x4x4"
-    "platform_slope_4x6x4"
-    "platform_slope_6x2x2"
-    "platform_slope_6x4x4"
-    "platform_slope_6x6x4"
+    { Name = "platform_slope_2x2x2"; Location = Colored "platform_slope_2x2x2" }
+    { Name = "platform_slope_2x4x4"; Location = Colored "platform_slope_2x4x4" }
+    { Name = "platform_slope_2x6x4"; Location = Colored "platform_slope_2x6x4" }
+    { Name = "platform_slope_4x2x2"; Location = Colored "platform_slope_4x2x2" }
+    { Name = "platform_slope_4x4x4"; Location = Colored "platform_slope_4x4x4" }
+    { Name = "platform_slope_4x6x4"; Location = Colored "platform_slope_4x6x4" }
+    { Name = "platform_slope_6x2x2"; Location = Colored "platform_slope_6x2x2" }
+    { Name = "platform_slope_6x4x4"; Location = Colored "platform_slope_6x4x4" }
+    { Name = "platform_slope_6x6x4"; Location = Colored "platform_slope_6x6x4" }
   |]
 
-  // Barriers (12 sizes per color + 9 neutral)
   let barriers = [|
-    "barrier_1x1x1"
-    "barrier_1x1x2"
-    "barrier_1x1x4"
-    "barrier_2x1x1"
-    "barrier_2x1x2"
-    "barrier_2x1x4"
-    "barrier_3x1x1"
-    "barrier_3x1x2"
-    "barrier_3x1x4"
-    "barrier_4x1x1"
-    "barrier_4x1x2"
-    "barrier_4x1x4"
-    "barrier_column_1x1x2"
-    "barrier_column_1x1x4"
-    "barrier_corner_1x1x1"
-    "barrier_corner_1x1x2"
-    "barrier_corner_1x1x4"
+    { Name = "barrier_1x1x1"; Location = Colored "barrier_1x1x1" }
+    { Name = "barrier_1x1x2"; Location = Colored "barrier_1x1x2" }
+    { Name = "barrier_1x1x4"; Location = Colored "barrier_1x1x4" }
+    { Name = "barrier_2x1x1"; Location = Colored "barrier_2x1x1" }
+    { Name = "barrier_2x1x2"; Location = Colored "barrier_2x1x2" }
+    { Name = "barrier_2x1x4"; Location = Colored "barrier_2x1x4" }
+    { Name = "barrier_3x1x1"; Location = Colored "barrier_3x1x1" }
+    { Name = "barrier_3x1x2"; Location = Colored "barrier_3x1x2" }
+    { Name = "barrier_3x1x4"; Location = Colored "barrier_3x1x4" }
+    { Name = "barrier_4x1x1"; Location = Colored "barrier_4x1x1" }
+    { Name = "barrier_4x1x2"; Location = Colored "barrier_4x1x2" }
+    { Name = "barrier_4x1x4"; Location = Colored "barrier_4x1x4" }
   |]
 
-  // Arches (3 per color)
-  let arches = [| "arch"; "arch_tall"; "arch_wide" |]
+  let arches = [|
+    { Name = "arch"; Location = Colored "arch" }
+    { Name = "arch_tall"; Location = Colored "arch_tall" }
+    { Name = "arch_wide"; Location = Colored "arch_wide" }
+  |]
 
-  // Pipes (7 per color)
   let pipes = [|
-    "pipe_straight_A"
-    "pipe_straight_B"
-    "pipe_end"
-    "pipe_90_A"
-    "pipe_90_B"
-    "pipe_180_A"
-    "pipe_180_B"
+    { Name = "pipe_straight_A"; Location = Colored "pipe_straight_A" }
+    { Name = "pipe_straight_B"; Location = Colored "pipe_straight_B" }
+    { Name = "pipe_end"; Location = Colored "pipe_end" }
+    { Name = "pipe_90_A"; Location = Colored "pipe_90_A" }
+    { Name = "pipe_90_B"; Location = Colored "pipe_90_B" }
+    { Name = "pipe_180_A"; Location = Colored "pipe_180_A" }
+    { Name = "pipe_180_B"; Location = Colored "pipe_180_B" }
   |]
 
-  // Interactive elements
   let interactive = [|
-    "spring_pad"
-    "button_base"
-    "button_base_small"
-    "lever_floor_base"
-    "lever_wall_base_A"
-    "lever_wall_base_B"
-    "power"
+    { Name = "spring_pad"; Location = Colored "spring_pad" }
+    { Name = "button_base"; Location = Colored "button_base" }
+    { Name = "lever_floor_base"; Location = Colored "lever_floor_base" }
+    { Name = "lever_wall_base_A"; Location = Colored "lever_wall_base_A" }
+    { Name = "lever_wall_base_B"; Location = Colored "lever_wall_base_B" }
+    { Name = "power"; Location = Colored "power" }
   |]
 
-  // Collectibles
-  let collectibles = [| "star"; "heart"; "diamond"; "cone" |]
+  let collectibles = [|
+    { Name = "star"; Location = Colored "star" }
+    { Name = "heart"; Location = Colored "heart" }
+    { Name = "diamond"; Location = Colored "diamond" }
+    { Name = "cone"; Location = Colored "cone" }
+  |]
 
-  // Decorative
   let decorations = [|
-    "flag_A"
-    "flag_B"
-    "flag_C"
-    "hoop"
-    "hoop_angled"
-    "railing_straight_single"
-    "railing_straight_double"
-    "railing_straight_padded"
-    "railing_corner_single"
-    "railing_corner_double"
-    "railing_corner_padded"
-    "bracing_small"
-    "bracing_medium"
-    "bracing_large"
-    "bomb_A"
-    "bomb_B"
-    "structure_A"
-    "structure_B"
-    "structure_C"
-    "strut_horizontal"
-    "strut_vertical"
-    "signage_arrow_stand"
-    "signage_arrow_wall"
-    "signage_arrows_left"
-    "signage_arrows_right"
+    { Name = "flag_A"; Location = Colored "flag_A" }
+    { Name = "flag_B"; Location = Colored "flag_B" }
+    { Name = "flag_C"; Location = Colored "flag_C" }
+    { Name = "hoop"; Location = Colored "hoop" }
+    { Name = "hoop_angled"; Location = Colored "hoop_angled" }
+    { Name = "railing_straight_single"; Location = Colored "railing_straight_single" }
+    { Name = "railing_straight_double"; Location = Colored "railing_straight_double" }
+    { Name = "railing_straight_padded"; Location = Colored "railing_straight_padded" }
+    { Name = "railing_corner_single"; Location = Colored "railing_corner_single" }
+    { Name = "railing_corner_double"; Location = Colored "railing_corner_double" }
+    { Name = "railing_corner_padded"; Location = Colored "railing_corner_padded" }
+    { Name = "bracing_small"; Location = Colored "bracing_small" }
+    { Name = "bracing_medium"; Location = Colored "bracing_medium" }
+    { Name = "bracing_large"; Location = Colored "bracing_large" }
+    { Name = "signage_arrow_stand"; Location = Colored "signage_arrow_stand" }
+    { Name = "signage_arrow_wall"; Location = Colored "signage_arrow_wall" }
+    { Name = "signage_arrows_left"; Location = Colored "signage_arrows_left" }
+    { Name = "signage_arrows_right"; Location = Colored "signage_arrows_right" }
   |]
 
   let pillars = [|
-    "pillar_1x1x1"
-    "pillar_1x1x2"
-    "pillar_1x1x4"
-    "pillar_1x1x8"
-    "pillar_2x2x2"
-    "pillar_2x2x4"
-    "pillar_2x2x8"
+    { Name = "pillar_1x1x1"; Location = Neutral "pillar_1x1x1" }
+    { Name = "pillar_1x1x2"; Location = Neutral "pillar_1x1x2" }
+    { Name = "pillar_1x1x4"; Location = Neutral "pillar_1x1x4" }
+    { Name = "pillar_1x1x8"; Location = Neutral "pillar_1x1x8" }
+    { Name = "pillar_2x2x2"; Location = Neutral "pillar_2x2x2" }
+    { Name = "pillar_2x2x4"; Location = Neutral "pillar_2x2x4" }
+    { Name = "pillar_2x2x8"; Location = Neutral "pillar_2x2x8" }
   |]
 
-  // Get assets by game mode
+  let neutralSpecial = [|
+    { Name = "barrier_1x1x1"; Location = Neutral "barrier_1x1x1" }
+    { Name = "barrier_1x1x2"; Location = Neutral "barrier_1x1x2" }
+    { Name = "barrier_1x1x4"; Location = Neutral "barrier_1x1x4" }
+    { Name = "barrier_2x1x1"; Location = Neutral "barrier_2x1x1" }
+    { Name = "barrier_2x1x2"; Location = Neutral "barrier_2x1x2" }
+    { Name = "barrier_2x1x4"; Location = Neutral "barrier_2x1x4" }
+    { Name = "barrier_3x1x1"; Location = Neutral "barrier_3x1x1" }
+    { Name = "barrier_3x1x2"; Location = Neutral "barrier_3x1x2" }
+    { Name = "barrier_3x1x4"; Location = Neutral "barrier_3x1x4" }
+    { Name = "barrier_4x1x1"; Location = Neutral "barrier_4x1x1" }
+    { Name = "barrier_4x1x2"; Location = Neutral "barrier_4x1x2" }
+    { Name = "barrier_4x1x4"; Location = Neutral "barrier_4x1x4" }
+    { Name = "ball"; Location = Neutral "ball" }
+    { Name = "bomb"; Location = Neutral "bomb" }
+    { Name = "cone"; Location = Neutral "cone" }
+    { Name = "floor_wood_1x1"; Location = Neutral "floor_wood_1x1" }
+    { Name = "floor_wood_2x2"; Location = Neutral "floor_wood_2x2" }
+    { Name = "floor_wood_2x6"; Location = Neutral "floor_wood_2x6" }
+    { Name = "floor_wood_4x4"; Location = Neutral "floor_wood_4x4" }
+    { Name = "platform_wood_1x1x1"; Location = Neutral "platform_wood_1x1x1" }
+    { Name = "sign"; Location = Neutral "sign" }
+    { Name = "signage_arrows_left"; Location = Neutral "signage_arrows_left" }
+    { Name = "signage_arrows_right"; Location = Neutral "signage_arrows_right" }
+    { Name = "signage_finish"; Location = Neutral "signage_finish" }
+    { Name = "signage_finish_board"; Location = Neutral "signage_finish_board" }
+    { Name = "signage_finish_wide"; Location = Neutral "signage_finish_wide" }
+    { Name = "signage_finish_wide_board"; Location = Neutral "signage_finish_wide_board" }
+    { Name = "spring"; Location = Neutral "spring" }
+    { Name = "structure_A"; Location = Neutral "structure_A" }
+    { Name = "structure_B"; Location = Neutral "structure_B" }
+    { Name = "structure_C"; Location = Neutral "structure_C" }
+    { Name = "strut_horizontal"; Location = Neutral "strut_horizontal" }
+    { Name = "strut_vertical"; Location = Neutral "strut_vertical" }
+  |]
+
   let getAssetsByMode(modeName: TerrainAssets) =
-    // Placeholder for phase 2 logic
     match modeName with
     | Exploration ->
-        // More decorations, wider paths, arches, collectibles
         {
           Collections.empty with
               Platforms = platforms
@@ -175,21 +197,20 @@ module TerrainAssets =
               Arches = arches
               Collectibles = collectibles
               Decorations = decorations
+              NeutralSpecial = neutralSpecial
         }
 
     | Challenge ->
-        // More barriers, narrower paths, technical platforms
-
         {
           Collections.empty with
               Barriers = barriers
               Pipes = pipes
               Interactive = interactive
               Pillars = pillars
+              NeutralSpecial = neutralSpecial
         }
 
     | Infinite ->
-        // Balanced mix
         {
           Collections.empty with
               Platforms = platforms
@@ -199,8 +220,23 @@ module TerrainAssets =
               Interactive = interactive
               Collectibles = collectibles
               Decorations = decorations
+              Pillars = pillars
+              NeutralSpecial = neutralSpecial
         }
 
+  let getAllAssets() =
+    Array.concat [
+      platforms
+      slopes
+      barriers
+      arches
+      pipes
+      interactive
+      collectibles
+      decorations
+      pillars
+      neutralSpecial
+    ]
 
   let getNextColor(current: ColorVariant) =
     match current with
