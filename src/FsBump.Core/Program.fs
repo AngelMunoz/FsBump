@@ -76,7 +76,9 @@ module Program =
     let sSize, sOffset, sAsset = TileBuilder.getAssetData "platform_4x4x1" 0 env
 
     // Initialize Infinite Mode
-    let initialGraph = MapGenerator.createInitialState GameMode.Infinite (Random.Shared.Next())
+    let initialGraph =
+      MapGenerator.createInitialState GameMode.Infinite (Random.Shared.Next())
+
     let mainPathId = initialGraph.Paths.[0].Id
 
     let startPlatform = {
@@ -92,20 +94,28 @@ module Program =
       PathId = mainPathId
       SegmentIndex = -1 // Special index for start
     }
-    
+
     // Generate initial map (about 60 units worth)
     let mutable currentGraph = initialGraph
     let mutable currentMap = [| startPlatform |]
-    
+
     // We need to simulate generation to get a decent start
     // Force a few update cycles
     for i in 1..3 do
-        let result = MapGenerator.Operations.updateMap env (VectorMath.add Vector3.Zero (VectorMath.create 0.0f 0.0f (float32 (-i * 20)))) currentMap currentGraph
-        match result with
-        | ValueSome(map, graph) ->
-            currentMap <- map
-            currentGraph <- graph
-        | ValueNone -> ()
+      let result =
+        MapGenerator.Operations.updateMap
+          env
+          (VectorMath.add
+            Vector3.Zero
+            (VectorMath.create 0.0f 0.0f (float32(-i * 20))))
+          currentMap
+          currentGraph
+
+      match result with
+      | ValueSome(map, graph) ->
+        currentMap <- map
+        currentGraph <- graph
+      | ValueNone -> ()
 
     let spawnVec = MapGenerator.getSpawnPoint()
     let player, pCmd = Player.init spawnVec
@@ -195,9 +205,10 @@ module Program =
       let sky' = Skybox.update dt model.Skybox
 
       // Simple check to trigger generation: if any active path end is near (80 units)
-      let needsUpdate = 
-          PathGraphSystem.getActivePaths model.PathGraph
-          |> Array.exists (fun p -> Vector3.Distance(player'.Body.Position, p.Position) < 80.0f)
+      let needsUpdate =
+        PathGraphSystem.getActivePaths model.PathGraph
+        |> Array.exists(fun p ->
+          Vector3.Distance(player'.Body.Position, p.Position) < 80.0f)
 
       let genCmd =
         if needsUpdate then
@@ -295,7 +306,13 @@ module Program =
       .Submit()
 
 
-    MapGenerator.draw model.Env frustum model.Player.Body.Position model.Map buffer
+    MapGenerator.draw
+      model.Env
+      frustum
+      model.Player.Body.Position
+      model.Map
+      buffer
+
     Player.draw model.Env model.Player buffer
 
 

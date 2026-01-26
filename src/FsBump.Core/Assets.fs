@@ -113,8 +113,13 @@ module Assets =
   ]
 
   let private neutralAssets = [
-      "pillar_1x1x1"; "pillar_1x1x2"; "pillar_1x1x4"; "pillar_1x1x8"
-      "pillar_2x2x2"; "pillar_2x2x4"; "pillar_2x2x8"
+    "pillar_1x1x1"
+    "pillar_1x1x2"
+    "pillar_1x1x4"
+    "pillar_1x1x8"
+    "pillar_2x2x2"
+    "pillar_2x2x4"
+    "pillar_2x2x8"
   ]
 
   let load(modelStore: IModelStore) =
@@ -123,7 +128,7 @@ module Assets =
         modelStore.Load(sprintf "kaykit_platformer/%s/%s_%s" c a c)
 
     for a in neutralAssets do
-        modelStore.Load(sprintf "kaykit_platformer/neutral/%s" a)
+      modelStore.Load(sprintf "kaykit_platformer/neutral/%s" a)
 
     modelStore.Load PlayerBall
     modelStore.Load "cube"

@@ -5,6 +5,8 @@ open Microsoft.Xna.Framework.Graphics
 open Mibo.Input
 open Mibo.Rendering.Graphics3D
 open System
+open FSharp.UMX
+
 
 [<Struct>]
 type CollisionType =
@@ -27,33 +29,33 @@ type TileType =
 // ─────────────────────────────────────────────────────────────
 // Multi-Path & Game Mode Types
 // ─────────────────────────────────────────────────────────────
-
-type PathId = PathId of Guid
+[<Measure>]
+type PathId
 
 type FiniteModeConfig = {
-    Duration: int           // Duration in seconds (e.g., 120-300)
-    BranchComplexity: int   // 1-3, controls number of branches
-    Difficulty: float32     // 0.0-1.0
+  Duration: int // Duration in seconds (e.g., 120-300)
+  BranchComplexity: int // 1-3, controls number of branches
+  Difficulty: float32 // 0.0-1.0
 }
 
 type GameMode =
-    | Infinite
-    | Exploration of FiniteModeConfig
-    | Challenge of FiniteModeConfig
+  | Infinite
+  | Exploration of FiniteModeConfig
+  | Challenge of FiniteModeConfig
 
 type PathState = {
-    Id: PathId
-    Position: Vector3
-    Direction: Vector3
-    PreviousDirection: Vector3
-    Width: int
-    CurrentColor: int
-    IsActive: bool
-    IsMainPath: bool
-    ParentPathId: PathId option
-    ConvergencePathId: PathId option
-    DistanceFromStart: float32
-    NextSegmentIndex: int
+  Id: Guid<PathId>
+  Position: Vector3
+  Direction: Vector3
+  PreviousDirection: Vector3
+  Width: int
+  CurrentColor: int
+  IsActive: bool
+  IsMainPath: bool
+  ParentPathId: Guid<PathId> voption
+  ConvergencePathId: Guid<PathId> voption
+  DistanceFromStart: float32
+  NextSegmentIndex: int
 }
 
 [<Struct>]
@@ -67,27 +69,27 @@ type Tile = {
   Style: int
   AssetName: string
   VisualOffset: Vector3
-  PathId: PathId
+  PathId: Guid<PathId>
   SegmentIndex: int
 }
 
 type SegmentMetadata = {
-    PathId: PathId
-    StartPosition: Vector3
-    EndPosition: Vector3
-    SegmentType: string
-    Assets: string array
-    IsBranchPoint: bool
-    IsConvergencePoint: bool
+  PathId: Guid<PathId>
+  StartPosition: Vector3
+  EndPosition: Vector3
+  SegmentType: string
+  Assets: string array
+  IsBranchPoint: bool
+  IsConvergencePoint: bool
 }
 
 type PathGraph = {
-    Paths: PathState array
-    StartPoint: Vector3
-    EndPoint: Vector3 option
-    Mode: GameMode
-    Seed: int
-    Metadata: SegmentMetadata array
+  Paths: PathState array
+  StartPoint: Vector3
+  EndPoint: Vector3 option
+  Mode: GameMode
+  Seed: int
+  Metadata: SegmentMetadata array
 }
 
 [<Struct>]
