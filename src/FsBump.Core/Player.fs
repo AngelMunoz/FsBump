@@ -40,6 +40,8 @@ module Player =
       IsGrounded = false
       Rotation = Quaternion.Identity
       LastSafePosition = initialPos
+      RingRotation = 0.0f
+      Time = 0.0f
     }
 
     /// Orchestrate one tick of player logic
@@ -83,6 +85,8 @@ module Player =
       // 3. Rotation System
       let newRotation =
         Rotation.update dt bodyAfterPhysics.Velocity model.Rotation
+
+      let newRingRotation = model.RingRotation + (dt * 1.5f)
 
       // 4. Safety & Respawn logic
       let killFloor =
@@ -128,6 +132,8 @@ module Player =
                       Held = Set.empty
                       Started = Set.empty
                 }
+                RingRotation = 0.0f
+                Time = model.Time + dt
           }
         else
           {
@@ -136,6 +142,8 @@ module Player =
                 IsGrounded = isGrounded
                 Rotation = newRotation
                 LastSafePosition = nextLastSafePos
+                RingRotation = newRingRotation
+                Time = model.Time + dt
           }
 
       let cmd = if didJump then Cmd.ofMsg(PlaySound JumpSound) else Cmd.none
@@ -169,6 +177,11 @@ module Player =
     =
     env.ModelStore.GetMesh Assets.PlayerBall
     |> ValueOption.iter(fun playerMesh ->
+      // Pulse Logic
+      let t = sin(model.Time * 4.0f) * 0.5f + 0.5f // 0.0 to 1.0
+      let pulseColor = Color.Lerp(Color.SaddleBrown, Color.SandyBrown, t)
+      let pulseIntensity = 2.0f + (t * 2.5f) // Ranges 2.0 to 4.5
+
       buffer
         .Draw(
           draw {
@@ -176,6 +189,49 @@ module Player =
             scaledBy(model.Body.Radius * 2.0f)
             rotatedBy model.Rotation
             at model.Body.Position
+            withEmissive pulseColor pulseIntensity
+          }
+        )
+        .Submit())
+
+    env.ModelStore.GetTexture "Textures/saturn_rings"
+    |> ValueOption.iter(fun ringsTexture ->
+      // Ring 1: Main fast ring
+      let s1 = 4.0f + sin(model.Time * 2.0f) * 0.1f
+
+      let ringMatrix1 =
+        Matrix.CreateRotationX(MathHelper.ToRadians 10f)
+        * Matrix.CreateRotationY model.RingRotation
+        * Matrix.CreateTranslation model.Body.Position
+
+      buffer
+        .QuadTransparent(
+          ringsTexture,
+          quad {
+            at Vector3.Zero
+            onXZ(Vector2(s1, s1))
+            color Color.White
+            relativeTo ringMatrix1
+          }
+        )
+        .Submit()
+
+      // Ring 2: Slower, larger, " ghost" ring for volume
+      let s2 = 4.5f + cos(model.Time * 1.5f) * 0.2f
+
+      let ringMatrix2 =
+        Matrix.CreateRotationX(MathHelper.ToRadians 10f)
+        * Matrix.CreateRotationY model.RingRotation
+        * Matrix.CreateTranslation model.Body.Position
+
+      buffer
+        .QuadTransparent(
+          ringsTexture,
+          quad {
+            at Vector3.Zero
+            onXZ(Vector2(s2, s2))
+            color(Color.White * 0.6f) // Semi-transparent ghost
+            relativeTo ringMatrix2
           }
         )
         .Submit())

@@ -7509,3 +7509,15 @@
 /processorParam:TextureFormat=Compressed
 /build:kaykit_platformer/yellow/star_yellow.obj
 
+#begin Textures/saturn_rings.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Textures/saturn_rings.png
+

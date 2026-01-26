@@ -76,6 +76,8 @@ type PlayerModel = {
   IsGrounded: bool
   Rotation: Quaternion
   LastSafePosition: Vector3
+  RingRotation: float32
+  Time: float32
 }
 
 type ModelGeometry = { Vertices: Vector3[]; Indices: int[] }

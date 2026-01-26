@@ -316,6 +316,15 @@ module Program =
        |> PipelineConfig.withShadows(
          ShadowConfig.defaults |> ShadowConfig.withBias 0.001f 0.005f
        )
+       |> PipelineConfig.withPostProcess(
+         PostProcessConfig.defaults
+         |> PostProcessConfig.withBloom {
+           BloomConfig.defaults with
+               Threshold = 0.85f
+               Intensity = 1.2f
+               Scatter = 0.8f
+         }
+       )
        |> PipelineConfig.withShader
          ShaderBase.ShadowCaster
          "Effects/ShadowCaster"

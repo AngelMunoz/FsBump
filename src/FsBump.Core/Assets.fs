@@ -93,6 +93,7 @@ module Assets =
     modelStore.Load "kaykit_platformer/neutral/pillar_1x1x2"
     modelStore.Load "cube"
     modelStore.LoadTexture "gdb-switch-2"
+    modelStore.LoadTexture "Textures/saturn_rings"
 
   let skyboxEffect(ctx: Mibo.Elmish.GameContext) =
     Assets.effect "Effects/NightSky" ctx

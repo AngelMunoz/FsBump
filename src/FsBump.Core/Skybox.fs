@@ -11,7 +11,7 @@ module Skybox =
 
   let init() = { Time = 0.0f }
 
-  let update dt state = { state with Time = state.Time + dt }
+  let update dt (state: State) = { state with Time = state.Time + dt }
 
   let draw
     (env: #IModelStoreProvider)
