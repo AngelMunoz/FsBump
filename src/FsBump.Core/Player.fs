@@ -7,6 +7,34 @@ open Mibo.Rendering.Graphics3D
 open FsBump.Core.RootComposition
 
 module Player =
+  open Microsoft.Xna.Framework.Graphics
+
+  module Config =
+    module Physics =
+      let Radius = 0.5f
+      let CutoffDistanceSq = 1600.0f
+      let SafePositionCheckDistSq = 16.0f
+      let KillFloorOffset = 15.0f
+      let KillFloorDefault = -20.0f
+
+    module Visuals =
+      let RingRotationSpeed = 1.5f
+      let RingTilt = MathHelper.ToRadians 10.0f
+      // Pulse
+      let PulseSpeed = 4.0f
+      let PulseIntensityBase = 2.0f
+      let PulseIntensityRange = 2.5f
+      // Colors
+      let ColorDark = Color.SaddleBrown
+      let ColorLight = Color.SandyBrown
+      // Rings
+      let Ring1BaseScale = 4.0f
+      let Ring1PulseSpeed = 2.0f
+      let Ring1PulseAmount = 0.1f
+      let Ring2BaseScale = 4.5f
+      let Ring2PulseSpeed = 1.5f
+      let Ring2PulseAmount = 0.2f
+      let Ring2Opacity = 0.6f
 
   module Input =
     open Microsoft.Xna.Framework.Input
@@ -27,13 +55,13 @@ module Player =
     | InputChanged of ActionState<PlayerAction>
     | PlaySound of AudioId
 
-  module Operations =
+  module Logic =
     /// Initialize player state
     let create initialPos = {
       Body = {
         Position = initialPos
         Velocity = Vector3.Zero
-        Radius = 0.5f
+        Radius = Config.Physics.Radius
       }
       Input = ActionState.empty
       AnalogDir = Microsoft.Xna.Framework.Vector2.Zero
@@ -61,7 +89,7 @@ module Player =
       // 2. Physics System
       env.CollisionBuffer.Clear()
 
-      let cutoffSq = 1600.0f
+      let cutoffSq = Config.Physics.CutoffDistanceSq
       let pos = bodyAfterMovement.Position
 
       // Efficient filtering using ResizeArray
@@ -86,20 +114,16 @@ module Player =
       let newRotation =
         Rotation.update dt bodyAfterPhysics.Velocity model.Rotation
 
-      let newRingRotation = model.RingRotation + (dt * 1.5f)
+      let newRingRotation =
+        model.RingRotation + (dt * Config.Visuals.RingRotationSpeed)
 
       // 4. Safety & Respawn logic
       let killFloor =
         if map.Length = 0 then
-          -20.0f
+          Config.Physics.KillFloorDefault
         else
-          let mutable minY = map.[0].Position.Y
-
-          for i = 1 to map.Length - 1 do
-            if map.[i].Position.Y < minY then
-              minY <- map.[i].Position.Y
-
-          minY - 15.0f
+          let minY = map |> Array.minBy(fun t -> t.Position.Y) |> _.Position.Y
+          minY - Config.Physics.KillFloorOffset
 
       let mutable nextLastSafePos = model.LastSafePosition
 
@@ -111,7 +135,7 @@ module Player =
             let t = nearbyTiles.[i]
 
             if
-              Vector3.DistanceSquared(t.Position, bodyAfterPhysics.Position) < 16.0f
+              Vector3.DistanceSquared(t.Position, bodyAfterPhysics.Position) < Config.Physics.SafePositionCheckDistSq
             then
               nextLastSafePos <- t.Position + Vector3.Up * 1.0f
               foundSafe <- true
@@ -150,37 +174,41 @@ module Player =
 
       model, cmd
 
-  let init initialPos = Operations.create initialPos, Cmd.none
+  let init initialPos = Logic.create initialPos, Cmd.none
 
   let update msg (model: PlayerModel) =
     match msg with
     | InputChanged input -> { model with Input = input }, Cmd.none
     | PlaySound _ -> model, Cmd.none
 
-  let getLight(model: PlayerModel) =
-    Light.Spot {
-      Position = model.Body.Position + Vector3(0.0f, 8.0f, 2.0f)
-      Direction = Vector3.Normalize(Vector3(0.0f, -1.0f, -0.1f))
-      Color = Color.Cyan
-      Intensity = 2.0f
-      Range = 100.0f
-      InnerConeAngle = MathHelper.ToRadians 30.f
-      OuterConeAngle = MathHelper.ToRadians 80.f
-      Shadow = ValueSome ShadowSettings.defaults
-      SourceRadius = 0.1f
-    }
+  module View =
+    let getLight(model: PlayerModel) =
+      Light.Spot {
+        Position = model.Body.Position + Vector3(0.0f, 8.0f, 2.0f)
+        Direction = Vector3.Normalize(Vector3(0.0f, -1.0f, -0.1f))
+        Color = Color.Cyan
+        Intensity = 2.0f
+        Range = 100.0f
+        InnerConeAngle = MathHelper.ToRadians 30.f
+        OuterConeAngle = MathHelper.ToRadians 80.f
+        Shadow = ValueSome ShadowSettings.defaults
+        SourceRadius = 0.1f
+      }
 
-  let draw
-    (env: #IModelStoreProvider)
-    (model: PlayerModel)
-    (buffer: PipelineBuffer<RenderCommand>)
-    =
-    env.ModelStore.GetMesh Assets.PlayerBall
-    |> ValueOption.iter(fun playerMesh ->
+    let drawPlayer
+      (model: PlayerModel)
+      (buffer: PipelineBuffer<RenderCommand>)
+      (playerMesh: Mesh)
+      =
       // Pulse Logic
-      let t = sin(model.Time * 4.0f) * 0.5f + 0.5f // 0.0 to 1.0
-      let pulseColor = Color.Lerp(Color.SaddleBrown, Color.SandyBrown, t)
-      let pulseIntensity = 2.0f + (t * 2.5f) // Ranges 2.0 to 4.5
+      let t = sin(model.Time * Config.Visuals.PulseSpeed) * 0.5f + 0.5f
+
+      let pulseColor =
+        Color.Lerp(Config.Visuals.ColorDark, Config.Visuals.ColorLight, t)
+
+      let pulseIntensity =
+        Config.Visuals.PulseIntensityBase
+        + t * Config.Visuals.PulseIntensityRange
 
       buffer
         .Draw(
@@ -192,46 +220,66 @@ module Player =
             withEmissive pulseColor pulseIntensity
           }
         )
-        .Submit())
+        .Submit()
 
-    env.ModelStore.GetTexture "Textures/saturn_rings"
-    |> ValueOption.iter(fun ringsTexture ->
-      // Ring 1: Main fast ring
-      let s1 = 4.0f + sin(model.Time * 2.0f) * 0.1f
+    let drawRings
+      (model: PlayerModel)
+      (buffer: PipelineBuffer<RenderCommand>)
+      (texture: Texture2D)
+      =
+      let tilt =
+        Quaternion.CreateFromAxisAngle(Vector3.UnitX, Config.Visuals.RingTilt)
 
-      let ringMatrix1 =
-        Matrix.CreateRotationX(MathHelper.ToRadians 10f)
-        * Matrix.CreateRotationY model.RingRotation
+      let spin =
+        Quaternion.CreateFromAxisAngle(Vector3.UnitY, model.RingRotation)
+
+      let ringMatrix =
+        Matrix.CreateFromQuaternion(spin * tilt)
         * Matrix.CreateTranslation model.Body.Position
+
+      // Ring 1: Main fast ring
+      let s1 =
+        Config.Visuals.Ring1BaseScale
+        + sin(model.Time * Config.Visuals.Ring1PulseSpeed)
+          * Config.Visuals.Ring1PulseAmount
 
       buffer
         .QuadTransparent(
-          ringsTexture,
+          texture,
           quad {
             at Vector3.Zero
             onXZ(Vector2(s1, s1))
+            relativeTo ringMatrix
             color Color.White
-            relativeTo ringMatrix1
           }
         )
         .Submit()
 
-      // Ring 2: Slower, larger, " ghost" ring for volume
-      let s2 = 4.5f + cos(model.Time * 1.5f) * 0.2f
-
-      let ringMatrix2 =
-        Matrix.CreateRotationX(MathHelper.ToRadians 10f)
-        * Matrix.CreateRotationY model.RingRotation
-        * Matrix.CreateTranslation model.Body.Position
+      // Ring 2: Slower ghost ring
+      let s2 =
+        Config.Visuals.Ring2BaseScale
+        + cos(model.Time * Config.Visuals.Ring2PulseSpeed)
+          * Config.Visuals.Ring2PulseAmount
 
       buffer
         .QuadTransparent(
-          ringsTexture,
+          texture,
           quad {
             at Vector3.Zero
             onXZ(Vector2(s2, s2))
-            color(Color.White * 0.6f) // Semi-transparent ghost
-            relativeTo ringMatrix2
+            relativeTo ringMatrix
+            color(Color.White * Config.Visuals.Ring2Opacity)
           }
         )
-        .Submit())
+        .Submit()
+
+  let draw
+    (env: #IModelStoreProvider)
+    (model: PlayerModel)
+    (buffer: PipelineBuffer<RenderCommand>)
+    =
+    env.ModelStore.GetMesh Assets.PlayerBall
+    |> ValueOption.iter(View.drawPlayer model buffer)
+
+    env.ModelStore.GetTexture Assets.SaturnRings
+    |> ValueOption.iter(View.drawRings model buffer)

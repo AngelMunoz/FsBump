@@ -195,7 +195,7 @@ module Program =
       }
 
       let player', pCmd =
-        Player.Operations.updateTick
+        Player.Logic.updateTick
           dt
           camera'.Yaw
           model.Env
@@ -273,7 +273,7 @@ module Program =
     let lighting = {
       Lighting.defaultSunlight with
           Lights = [|
-            Player.getLight model.Player
+            Player.View.getLight model.Player
 
             Light.Directional {
               Direction = Vector3.Normalize(Vector3(-1.0f, -1.0f, -0.5f))

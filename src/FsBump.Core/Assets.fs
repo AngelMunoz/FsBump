@@ -6,7 +6,12 @@ open Microsoft.Xna.Framework.Graphics
 
 module Assets =
   open Mibo.Elmish
+
+  [<Literal>]
   let PlayerBall = "kaykit_platformer/blue/ball_blue"
+
+  [<Literal>]
+  let SaturnRings = "Textures/saturn_rings"
 
   let private colors = [ "blue"; "green"; "red"; "yellow" ]
 
