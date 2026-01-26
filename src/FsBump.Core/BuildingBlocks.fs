@@ -9,30 +9,20 @@ open FSharp.UMX
 
 module TileBuilder =
 
-  let getAssetPath(assetName: string, color: ColorVariant) =
-    let assetDef = {
-      Name = assetName
-      Location =
-        if color = ColorVariant.Neutral
-        then Neutral assetName
-        else Colored assetName
-    }
-    AssetDefinition.getLoadPath assetDef color
+  let getAssetData (asset: AssetDefinition) (env: #IModelStoreProvider) =
+    env.ModelStore.Load asset
 
-  let getAssetData asset (color: ColorVariant) (env: #IModelStoreProvider) =
-    let full = getAssetPath(asset, color)
-
-    match env.ModelStore.GetBounds full with
+    match env.ModelStore.GetBounds asset with
     | ValueSome b -> b.Max - b.Min, (b.Min + b.Max) * -0.5f, asset
-    | ValueNone ->
-      // Fallback for neutral assets
-      let neutralPath = sprintf "kaykit_platformer/neutral/%s" asset
-      match env.ModelStore.GetBounds neutralPath with
-      | ValueSome b -> b.Max - b.Min, (b.Min + b.Max) * -0.5f, asset
-      | ValueNone -> Vector3.One, Vector3(0.0f, -0.5f, 0.0f), asset
+    | ValueNone -> Vector3.One, Vector3(0.0f, -0.5f, 0.0f), asset
 
   let floor pos color (env: #IModelStoreProvider) pathId segIndex =
-    let size, offset, asset = getAssetData "platform_1x1x1" color env
+    let asset = {
+      Name = "platform_1x1x1"
+      Location = AssetNamingPattern.createName "platform_1x1x1" color
+    }
+
+    let size, offset, asset = getAssetData asset env
 
     {
       Type = TileType.Floor
@@ -41,8 +31,7 @@ module TileBuilder =
       Rotation = 0.0f
       Variant = color
       Size = size
-      Style = 0
-      AssetName = asset
+      AssetDefinition = asset
       VisualOffset = offset
       PathId = pathId
       SegmentIndex = segIndex
@@ -55,8 +44,7 @@ module TileBuilder =
     Rotation = 0.0f
     Variant = color
     Size = size
-    Style = 0
-    AssetName = asset
+    AssetDefinition = asset
     VisualOffset = offset
     PathId = pathId
     SegmentIndex = segIndex
@@ -81,8 +69,7 @@ module TileBuilder =
       Rotation = rot
       Variant = color
       Size = size
-      Style = 0
-      AssetName = asset
+      AssetDefinition = asset
       VisualOffset = offset
       PathId = pathId
       SegmentIndex = segIndex
@@ -95,8 +82,7 @@ module TileBuilder =
     Rotation = 0.0f
     Variant = color
     Size = size
-    Style = 0
-    AssetName = assetName
+    AssetDefinition = assetName
     VisualOffset = offset
     PathId = pathId
     SegmentIndex = segIndex
@@ -109,8 +95,7 @@ module TileBuilder =
     Rotation = 0.0f
     Variant = color
     Size = size
-    Style = 0
-    AssetName = asset
+    AssetDefinition = asset
     VisualOffset = offset
     PathId = pathId
     SegmentIndex = segIndex
@@ -123,8 +108,7 @@ module TileBuilder =
     Rotation = rot
     Variant = color
     Size = size
-    Style = 0
-    AssetName = asset
+    AssetDefinition = asset
     VisualOffset = offset
     PathId = pathId
     SegmentIndex = segIndex
@@ -157,11 +141,20 @@ module BuildingBlocks =
 
       let asset =
         if assets.Length > 0 then
-          (assets[env.Random.Next assets.Length]).Name
-        else
-          "barrier_1x1x1"
+          let struct (kind, name) = assets[env.Random.Next assets.Length]
 
-      let size, offset, assetName = TileBuilder.getAssetData asset color env
+          {
+            Name = name
+            Location = Colored(color, kind, name)
+          }
+        else
+
+        {
+          Name = "barrier_1x1x1"
+          Location = Colored(color, Standard, "barrier_1x1x1")
+        }
+
+      let size, offset, assetName = TileBuilder.getAssetData asset env
 
       let shiftY = size.Y * 0.5f + 0.5f
       let shift = Vector3(0.0f, shiftY, 0.0f)
@@ -175,11 +168,19 @@ module BuildingBlocks =
 
       let asset =
         if assets.Length > 0 then
-          (assets[env.Random.Next assets.Length]).Name
-        else
-          "flag_A"
+          let struct (kind, name) = assets[env.Random.Next assets.Length]
 
-      let size, offset, assetName = TileBuilder.getAssetData asset color env
+          {
+            Name = name
+            Location = Colored(color, kind, name)
+          }
+        else
+          {
+            Name = "flag_A"
+            Location = Colored(color, Standard, "flag_A")
+          }
+
+      let size, offset, assetName = TileBuilder.getAssetData asset env
       let rot = if isLeft then -MathHelper.PiOver2 else MathHelper.PiOver2
 
       let shiftY = size.Y * 0.5f + 0.5f
@@ -250,12 +251,22 @@ module BuildingBlocks =
 
     let assetName =
       if slopeAssets.Length > 0 then
-        (slopeAssets[env.Random.Next slopeAssets.Length]).Name
-      else
-        "platform_slope_4x2x2"
+        let struct (kind, name) =
+          slopeAssets[env.Random.Next slopeAssets.Length]
 
-    let size, offset, assetBase =
-      TileBuilder.getAssetData assetName state.CurrentColor env
+        {
+          Name = name
+          Location = Colored(state.CurrentColor, kind, name)
+        }
+      else
+
+        {
+          Name = "platform_slope_4x2x2"
+          Location =
+            Colored(state.CurrentColor, Standard, "platform_slope_4x2x2")
+        }
+
+    let size, offset, assetBase = TileBuilder.getAssetData assetName env
 
     let currentHalf = size.Z * 0.5f
 
@@ -321,12 +332,21 @@ module BuildingBlocks =
 
     let asset =
       if platformAssets.Length > 0 then
-        (platformAssets[env.Random.Next platformAssets.Length]).Name
-      else
-        "platform_4x4x1"
+        let struct (kind, name) =
+          platformAssets[env.Random.Next platformAssets.Length]
 
-    let size, offset, assetBase =
-      TileBuilder.getAssetData asset state.CurrentColor env
+        {
+          Name = name
+          Location = Colored(state.CurrentColor, kind, name)
+        }
+      else
+
+        {
+          Name = "platform_4x4x1"
+          Location = Colored(state.CurrentColor, Standard, "platform_4x4x1")
+        }
+
+    let size, offset, assetBase = TileBuilder.getAssetData asset env
 
     let heightChange = float32(env.Random.Next(-1, 2)) * 2.0f
     let dist = 0.5f + float32 gapSize + size.Z * 0.5f

@@ -73,8 +73,13 @@ module Program =
     let skyEffect = Assets.skyboxEffect ctx
     let skyState = Skybox.init()
 
-    let sSize, sOffset, sAsset =
-      TileBuilder.getAssetData "platform_4x4x1" ColorVariant.Blue env
+    let asset = {
+      Name = "platform_4x4x1"
+      Location =
+        AssetNamingPattern.createName "platform_4x4x1" ColorVariant.Blue
+    }
+
+    let sSize, sOffset, sAsset = TileBuilder.getAssetData asset env
 
     // Initialize Infinite Mode
     let initialGraph =
@@ -89,8 +94,7 @@ module Program =
       Rotation = 0.0f
       Variant = ColorVariant.Blue
       Size = sSize
-      Style = 0
-      AssetName = sAsset
+      AssetDefinition = sAsset
       VisualOffset = sOffset
       PathId = mainPathId
       SegmentIndex = -1 // Special index for start

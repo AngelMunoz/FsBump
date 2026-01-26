@@ -53,9 +53,27 @@ module ColorVariant =
     | Yellow -> "yellow"
     | Neutral -> "neutral"
 
+type AssetNamingPattern =
+  | Standard
+  | ButtonBase
+  | LeverFloorBase
+  | LeverWallBaseA
+  | LeverWallBaseB
+
+
 type AssetLocation =
-  | Colored of string
+  | Colored of ColorVariant * AssetNamingPattern * string
   | Neutral of string
+
+module AssetNamingPattern =
+  let inline createName name color = Colored(color, Standard, name)
+
+  let inline createButton name color = Colored(color, ButtonBase, name)
+  let inline createLeverFloor name color = Colored(color, LeverFloorBase, name)
+  let inline createLeverWallA name color = Colored(color, LeverWallBaseA, name)
+  let inline createLeverWallB name color = Colored(color, LeverWallBaseB, name)
+  let inline createNeutral name = Neutral name
+
 
 type AssetDefinition = {
   Name: string
@@ -63,37 +81,43 @@ type AssetDefinition = {
 }
 
 module AssetDefinition =
-  let getLoadPath (asset: AssetDefinition) (variant: ColorVariant) =
-    let colorStr = ColorVariant.asString variant
+  let getLoadPath(asset: AssetDefinition) =
 
     match asset.Location with
-    | Colored name ->
-      match name with
-      | "button_base" ->
+    | Colored(color, pattern, name) ->
+      let colorStr = ColorVariant.asString color
+
+      match pattern with
+      | Standard ->
+        sprintf
+          "kaykit_platformer/%s/%s_%s"
+          (ColorVariant.asString color)
+          name
+          (ColorVariant.asString color)
+      | ButtonBase ->
         sprintf
           "kaykit_platformer/%s/button_base_%s_button_%s"
           colorStr
           colorStr
           colorStr
-      | "lever_floor_base" ->
+      | LeverFloorBase ->
         sprintf
           "kaykit_platformer/%s/lever_floor_base_%s_lever_floor_%s"
           colorStr
           colorStr
           colorStr
-      | "lever_wall_base_A" ->
+      | LeverWallBaseA ->
         sprintf
           "kaykit_platformer/%s/lever_wall_base_A_%s_lever_wall_A_%s"
           colorStr
           colorStr
           colorStr
-      | "lever_wall_base_B" ->
+      | LeverWallBaseB ->
         sprintf
           "kaykit_platformer/%s/lever_wall_base_B_%s_lever_wall_B_%s"
           colorStr
           colorStr
           colorStr
-      | _ -> sprintf "kaykit_platformer/%s/%s_%s" colorStr name colorStr
     | Neutral name -> sprintf "kaykit_platformer/neutral/%s" name
 
 type FiniteModeConfig = {
@@ -130,8 +154,7 @@ type Tile = {
   Rotation: float32
   Variant: ColorVariant
   Size: Vector3
-  Style: int
-  AssetName: string
+  AssetDefinition: AssetDefinition
   VisualOffset: Vector3
   PathId: Guid<PathId>
   SegmentIndex: int
@@ -197,15 +220,24 @@ type AudioId =
   | AmbientMusic
   | JumpSound
 
+type Specific =
+  | PlayerBall
+  | Cube
 
 type IModelStore =
-  abstract member Load: string -> unit
+  abstract member Load: AssetDefinition -> unit
+  abstract member LoadSpecific: Specific -> unit
   abstract member Bake: unit -> unit
-  abstract member Get: string -> Model voption
-  abstract member GetMesh: string -> Mesh voption
-  abstract member GetBounds: string -> BoundingBox voption
-  abstract member GetGeometry: string -> ModelGeometry voption
+  abstract member Get: AssetDefinition -> Model voption
+  abstract member GetSpecific: Specific -> Model voption
+  abstract member GetMesh: AssetDefinition -> Mesh voption
+  abstract member GetSpecificMesh: Specific -> Mesh voption
+  abstract member GetBounds: AssetDefinition -> BoundingBox voption
+  abstract member GetSpecificBounds: Specific -> BoundingBox voption
+  abstract member GetGeometry: AssetDefinition -> ModelGeometry voption
+  abstract member GetSpecificGeometry: Specific -> ModelGeometry voption
   abstract member LoadTexture: string -> unit
+
   abstract member GetTexture: string -> Texture2D voption
 
 type IModelStoreProvider =

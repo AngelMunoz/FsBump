@@ -3,16 +3,16 @@ namespace FsBump.Core
 module TerrainAssets =
 
   type Collections = {
-    Platforms: AssetDefinition[]
-    Slopes: AssetDefinition[]
-    Barriers: AssetDefinition[]
-    Arches: AssetDefinition[]
-    Pipes: AssetDefinition[]
-    Interactive: AssetDefinition[]
-    Collectibles: AssetDefinition[]
-    Decorations: AssetDefinition[]
-    Pillars: AssetDefinition[]
-    NeutralSpecial: AssetDefinition[]
+    Platforms: struct (AssetNamingPattern * string) array
+    Slopes: struct (AssetNamingPattern * string) array
+    Barriers: struct (AssetNamingPattern * string) array
+    Arches: struct (AssetNamingPattern * string) array
+    Pipes: struct (AssetNamingPattern * string) array
+    Interactive: struct (AssetNamingPattern * string) array
+    Collectibles: struct (AssetNamingPattern * string) array
+    Decorations: struct (AssetNamingPattern * string) array
+    Pillars: AssetLocation array
+    NeutralSpecial: AssetLocation array
   }
 
   module Collections =
@@ -35,180 +35,180 @@ module TerrainAssets =
     | Challenge
     | Infinite
 
-  let platforms = [|
-    { Name = "platform_1x1x1"; Location = Colored "platform_1x1x1" }
-    { Name = "platform_2x2x1"; Location = Colored "platform_2x2x1" }
-    { Name = "platform_2x2x2"; Location = Colored "platform_2x2x2" }
-    { Name = "platform_2x2x4"; Location = Colored "platform_2x2x4" }
-    { Name = "platform_4x2x1"; Location = Colored "platform_4x2x1" }
-    { Name = "platform_4x2x2"; Location = Colored "platform_4x2x2" }
-    { Name = "platform_4x2x4"; Location = Colored "platform_4x2x4" }
-    { Name = "platform_4x4x1"; Location = Colored "platform_4x4x1" }
-    { Name = "platform_4x4x2"; Location = Colored "platform_4x4x2" }
-    { Name = "platform_4x4x4"; Location = Colored "platform_4x4x4" }
-    { Name = "platform_6x2x1"; Location = Colored "platform_6x2x1" }
-    { Name = "platform_6x2x2"; Location = Colored "platform_6x2x2" }
-    { Name = "platform_6x2x4"; Location = Colored "platform_6x2x4" }
-    { Name = "platform_6x6x1"; Location = Colored "platform_6x6x1" }
-    { Name = "platform_6x6x2"; Location = Colored "platform_6x6x2" }
-    { Name = "platform_6x6x4"; Location = Colored "platform_6x6x4" }
-    { Name = "platform_decorative_1x1x1"; Location = Colored "platform_decorative_1x1x1" }
-    { Name = "platform_decorative_2x2x2"; Location = Colored "platform_decorative_2x2x2" }
-    { Name = "platform_arrow_2x2x1"; Location = Colored "platform_arrow_2x2x1" }
-    { Name = "platform_arrow_4x4x1"; Location = Colored "platform_arrow_4x4x1" }
-    { Name = "platform_decorative_1x1x1"; Location = Colored "platform_decorative_1x1x1" }
-    { Name = "platform_decorative_2x2x2"; Location = Colored "platform_decorative_2x2x2" }
-    { Name = "platform_hole_6x6x1"; Location = Colored "platform_hole_6x6x1" }
+  let platforms: struct (AssetNamingPattern * string) array = [|
+    Standard, "platform_1x1x1"
+    Standard, "platform_2x2x1"
+    Standard, "platform_2x2x2"
+    Standard, "platform_2x2x4"
+    Standard, "platform_4x2x1"
+    Standard, "platform_4x2x2"
+    Standard, "platform_4x2x4"
+    Standard, "platform_4x4x1"
+    Standard, "platform_4x4x2"
+    Standard, "platform_4x4x4"
+    Standard, "platform_6x2x1"
+    Standard, "platform_6x2x2"
+    Standard, "platform_6x2x4"
+    Standard, "platform_6x6x1"
+    Standard, "platform_6x6x2"
+    Standard, "platform_6x6x4"
+    Standard, "platform_decorative_1x1x1"
+    Standard, "platform_decorative_2x2x2"
+    Standard, "platform_arrow_2x2x1"
+    Standard, "platform_arrow_4x4x1"
+    Standard, "platform_hole_6x6x1"
   |]
 
-  let slopes = [|
-    { Name = "platform_slope_2x2x2"; Location = Colored "platform_slope_2x2x2" }
-    { Name = "platform_slope_2x4x4"; Location = Colored "platform_slope_2x4x4" }
-    { Name = "platform_slope_2x6x4"; Location = Colored "platform_slope_2x6x4" }
-    { Name = "platform_slope_4x2x2"; Location = Colored "platform_slope_4x2x2" }
-    { Name = "platform_slope_4x4x4"; Location = Colored "platform_slope_4x4x4" }
-    { Name = "platform_slope_4x6x4"; Location = Colored "platform_slope_4x6x4" }
-    { Name = "platform_slope_6x2x2"; Location = Colored "platform_slope_6x2x2" }
-    { Name = "platform_slope_6x4x4"; Location = Colored "platform_slope_6x4x4" }
-    { Name = "platform_slope_6x6x4"; Location = Colored "platform_slope_6x6x4" }
+  let slopes: struct (AssetNamingPattern * string) array = [|
+    Standard, "platform_slope_2x2x2"
+    Standard, "platform_slope_2x4x4"
+    Standard, "platform_slope_2x6x4"
+    Standard, "platform_slope_4x2x2"
+    Standard, "platform_slope_4x4x4"
+    Standard, "platform_slope_4x6x4"
+    Standard, "platform_slope_6x2x2"
+    Standard, "platform_slope_6x4x4"
+    Standard, "platform_slope_6x6x4"
   |]
 
-  let barriers = [|
-    { Name = "barrier_1x1x1"; Location = Colored "barrier_1x1x1" }
-    { Name = "barrier_1x1x2"; Location = Colored "barrier_1x1x2" }
-    { Name = "barrier_1x1x4"; Location = Colored "barrier_1x1x4" }
-    { Name = "barrier_2x1x1"; Location = Colored "barrier_2x1x1" }
-    { Name = "barrier_2x1x2"; Location = Colored "barrier_2x1x2" }
-    { Name = "barrier_2x1x4"; Location = Colored "barrier_2x1x4" }
-    { Name = "barrier_3x1x1"; Location = Colored "barrier_3x1x1" }
-    { Name = "barrier_3x1x2"; Location = Colored "barrier_3x1x2" }
-    { Name = "barrier_3x1x4"; Location = Colored "barrier_3x1x4" }
-    { Name = "barrier_4x1x1"; Location = Colored "barrier_4x1x1" }
-    { Name = "barrier_4x1x2"; Location = Colored "barrier_4x1x2" }
-    { Name = "barrier_4x1x4"; Location = Colored "barrier_4x1x4" }
+
+  let barriers: struct (AssetNamingPattern * string) array = [|
+    Standard, "barrier_1x1x1"
+    Standard, "barrier_1x1x2"
+    Standard, "barrier_1x1x4"
+    Standard, "barrier_2x1x1"
+    Standard, "barrier_2x1x2"
+    Standard, "barrier_2x1x4"
+    Standard, "barrier_3x1x1"
+    Standard, "barrier_3x1x2"
+    Standard, "barrier_3x1x4"
+    Standard, "barrier_4x1x1"
+    Standard, "barrier_4x1x2"
+    Standard, "barrier_4x1x4"
   |]
 
-  let arches = [|
-    { Name = "arch"; Location = Colored "arch" }
-    { Name = "arch_tall"; Location = Colored "arch_tall" }
-    { Name = "arch_wide"; Location = Colored "arch_wide" }
+  let arches: struct (AssetNamingPattern * string) array = [|
+    Standard, "arch"
+    Standard, "arch_tall"
+    Standard, "arch_wide"
   |]
 
-  let pipes = [|
-    { Name = "pipe_straight_A"; Location = Colored "pipe_straight_A" }
-    { Name = "pipe_straight_B"; Location = Colored "pipe_straight_B" }
-    { Name = "pipe_end"; Location = Colored "pipe_end" }
-    { Name = "pipe_90_A"; Location = Colored "pipe_90_A" }
-    { Name = "pipe_90_B"; Location = Colored "pipe_90_B" }
-    { Name = "pipe_180_A"; Location = Colored "pipe_180_A" }
-    { Name = "pipe_180_B"; Location = Colored "pipe_180_B" }
+  let pipes: struct (AssetNamingPattern * string) array = [|
+    Standard, "pipe_straight_A"
+    Standard, "pipe_straight_B"
+    Standard, "pipe_end"
+    Standard, "pipe_90_A"
+    Standard, "pipe_90_B"
+    Standard, "pipe_180_A"
+    Standard, "pipe_180_B"
   |]
 
-  let interactive = [|
-    { Name = "spring_pad"; Location = Colored "spring_pad" }
-    { Name = "button_base"; Location = Colored "button_base" }
-    { Name = "lever_floor_base"; Location = Colored "lever_floor_base" }
-    { Name = "lever_wall_base_A"; Location = Colored "lever_wall_base_A" }
-    { Name = "lever_wall_base_B"; Location = Colored "lever_wall_base_B" }
-    { Name = "power"; Location = Colored "power" }
+  let interactive: struct (AssetNamingPattern * string) array = [|
+    Standard, "spring_pad"
+    ButtonBase, "button_base"
+    LeverFloorBase, "lever_floor_base"
+    LeverWallBaseA, "lever_wall_base_A"
+    LeverWallBaseB, "lever_wall_base_B"
+    Standard, "power"
   |]
 
-  let collectibles = [|
-    { Name = "star"; Location = Colored "star" }
-    { Name = "heart"; Location = Colored "heart" }
-    { Name = "diamond"; Location = Colored "diamond" }
-    { Name = "cone"; Location = Colored "cone" }
+  let collectibles: struct (AssetNamingPattern * string) array = [|
+    Standard, "star"
+    Standard, "heart"
+    Standard, "diamond"
+    Standard, "cone"
+    Standard, "ball"
   |]
 
-  let decorations = [|
-    { Name = "flag_A"; Location = Colored "flag_A" }
-    { Name = "flag_B"; Location = Colored "flag_B" }
-    { Name = "flag_C"; Location = Colored "flag_C" }
-    { Name = "hoop"; Location = Colored "hoop" }
-    { Name = "hoop_angled"; Location = Colored "hoop_angled" }
-    { Name = "railing_straight_single"; Location = Colored "railing_straight_single" }
-    { Name = "railing_straight_double"; Location = Colored "railing_straight_double" }
-    { Name = "railing_straight_padded"; Location = Colored "railing_straight_padded" }
-    { Name = "railing_corner_single"; Location = Colored "railing_corner_single" }
-    { Name = "railing_corner_double"; Location = Colored "railing_corner_double" }
-    { Name = "railing_corner_padded"; Location = Colored "railing_corner_padded" }
-    { Name = "bracing_small"; Location = Colored "bracing_small" }
-    { Name = "bracing_medium"; Location = Colored "bracing_medium" }
-    { Name = "bracing_large"; Location = Colored "bracing_large" }
-    { Name = "signage_arrow_stand"; Location = Colored "signage_arrow_stand" }
-    { Name = "signage_arrow_wall"; Location = Colored "signage_arrow_wall" }
-    { Name = "signage_arrows_left"; Location = Colored "signage_arrows_left" }
-    { Name = "signage_arrows_right"; Location = Colored "signage_arrows_right" }
+  let decorations: struct (AssetNamingPattern * string) array = [|
+    Standard, "flag_A"
+    Standard, "flag_B"
+    Standard, "flag_C"
+    Standard, "hoop"
+    Standard, "hoop_angled"
+    Standard, "railing_straight_single"
+    Standard, "railing_straight_double"
+    Standard, "railing_straight_padded"
+    Standard, "railing_corner_single"
+    Standard, "railing_corner_double"
+    Standard, "railing_corner_padded"
+    Standard, "bracing_small"
+    Standard, "bracing_medium"
+    Standard, "bracing_large"
+    Standard, "bomb_A"
+    Standard, "bomb_B"
+    Standard, "signage_arrow_stand"
+    Standard, "signage_arrow_wall"
+    Standard, "signage_arrows_left"
+    Standard, "signage_arrows_right"
   |]
 
-  let pillars = [|
-    { Name = "pillar_1x1x1"; Location = Neutral "pillar_1x1x1" }
-    { Name = "pillar_1x1x2"; Location = Neutral "pillar_1x1x2" }
-    { Name = "pillar_1x1x4"; Location = Neutral "pillar_1x1x4" }
-    { Name = "pillar_1x1x8"; Location = Neutral "pillar_1x1x8" }
-    { Name = "pillar_2x2x2"; Location = Neutral "pillar_2x2x2" }
-    { Name = "pillar_2x2x4"; Location = Neutral "pillar_2x2x4" }
-    { Name = "pillar_2x2x8"; Location = Neutral "pillar_2x2x8" }
+  let neutralSpecial: AssetLocation array = [|
+    Neutral "barrier_1x1x1"
+    Neutral "barrier_1x1x2"
+    Neutral "barrier_1x1x4"
+    Neutral "barrier_2x1x1"
+    Neutral "barrier_2x1x2"
+    Neutral "barrier_2x1x4"
+    Neutral "barrier_3x1x1"
+    Neutral "barrier_3x1x2"
+    Neutral "barrier_3x1x4"
+    Neutral "barrier_4x1x1"
+    Neutral "barrier_4x1x2"
+    Neutral "barrier_4x1x4"
+    Neutral "ball"
+    Neutral "bomb"
+    Neutral "cone"
+    Neutral "floor_wood_1x1"
+    Neutral "floor_wood_2x2"
+    Neutral "floor_wood_2x6"
+    Neutral "floor_wood_4x4"
+    Neutral "platform_wood_1x1x1"
+    Neutral "sign"
+    Neutral "signage_arrows_left"
+    Neutral "signage_arrows_right"
+    Neutral "signage_finish"
+    Neutral "signage_finish_board"
+    Neutral "signage_finish_wide"
+    Neutral "signage_finish_wide_board"
+    Neutral "spring"
+    Neutral "structure_A"
+    Neutral "structure_B"
+    Neutral "structure_C"
+    Neutral "strut_horizontal"
+    Neutral "strut_vertical"
   |]
 
-  let neutralSpecial = [|
-    { Name = "barrier_1x1x1"; Location = Neutral "barrier_1x1x1" }
-    { Name = "barrier_1x1x2"; Location = Neutral "barrier_1x1x2" }
-    { Name = "barrier_1x1x4"; Location = Neutral "barrier_1x1x4" }
-    { Name = "barrier_2x1x1"; Location = Neutral "barrier_2x1x1" }
-    { Name = "barrier_2x1x2"; Location = Neutral "barrier_2x1x2" }
-    { Name = "barrier_2x1x4"; Location = Neutral "barrier_2x1x4" }
-    { Name = "barrier_3x1x1"; Location = Neutral "barrier_3x1x1" }
-    { Name = "barrier_3x1x2"; Location = Neutral "barrier_3x1x2" }
-    { Name = "barrier_3x1x4"; Location = Neutral "barrier_3x1x4" }
-    { Name = "barrier_4x1x1"; Location = Neutral "barrier_4x1x1" }
-    { Name = "barrier_4x1x2"; Location = Neutral "barrier_4x1x2" }
-    { Name = "barrier_4x1x4"; Location = Neutral "barrier_4x1x4" }
-    { Name = "ball"; Location = Neutral "ball" }
-    { Name = "bomb"; Location = Neutral "bomb" }
-    { Name = "cone"; Location = Neutral "cone" }
-    { Name = "floor_wood_1x1"; Location = Neutral "floor_wood_1x1" }
-    { Name = "floor_wood_2x2"; Location = Neutral "floor_wood_2x2" }
-    { Name = "floor_wood_2x6"; Location = Neutral "floor_wood_2x6" }
-    { Name = "floor_wood_4x4"; Location = Neutral "floor_wood_4x4" }
-    { Name = "platform_wood_1x1x1"; Location = Neutral "platform_wood_1x1x1" }
-    { Name = "sign"; Location = Neutral "sign" }
-    { Name = "signage_arrows_left"; Location = Neutral "signage_arrows_left" }
-    { Name = "signage_arrows_right"; Location = Neutral "signage_arrows_right" }
-    { Name = "signage_finish"; Location = Neutral "signage_finish" }
-    { Name = "signage_finish_board"; Location = Neutral "signage_finish_board" }
-    { Name = "signage_finish_wide"; Location = Neutral "signage_finish_wide" }
-    { Name = "signage_finish_wide_board"; Location = Neutral "signage_finish_wide_board" }
-    { Name = "spring"; Location = Neutral "spring" }
-    { Name = "structure_A"; Location = Neutral "structure_A" }
-    { Name = "structure_B"; Location = Neutral "structure_B" }
-    { Name = "structure_C"; Location = Neutral "structure_C" }
-    { Name = "strut_horizontal"; Location = Neutral "strut_horizontal" }
-    { Name = "strut_vertical"; Location = Neutral "strut_vertical" }
+  let pillars: AssetLocation array = [|
+    Neutral "pillar_1x1x1"
+    Neutral "pillar_1x1x2"
+    Neutral "pillar_1x1x4"
+    Neutral "pillar_1x1x8"
+    Neutral "pillar_2x2x2"
+    Neutral "pillar_2x2x4"
+    Neutral "pillar_2x2x8"
   |]
 
   let getAssetsByMode(modeName: TerrainAssets) =
     match modeName with
-    | Exploration ->
-        {
-          Collections.empty with
-              Platforms = platforms
-              Slopes = slopes
-              Arches = arches
-              Collectibles = collectibles
-              Decorations = decorations
-              NeutralSpecial = neutralSpecial
-        }
+    | Exploration -> {
+        Collections.empty with
+            Platforms = platforms
+            Slopes = slopes
+            Arches = arches
+            Collectibles = collectibles
+            Decorations = decorations
+            NeutralSpecial = neutralSpecial
+      }
 
-    | Challenge ->
-        {
-          Collections.empty with
-              Barriers = barriers
-              Pipes = pipes
-              Interactive = interactive
-              Pillars = pillars
-              NeutralSpecial = neutralSpecial
-        }
+    | Challenge -> {
+        Collections.empty with
+            Barriers = barriers
+            Pipes = pipes
+            Interactive = interactive
+            Pillars = pillars
+            NeutralSpecial = neutralSpecial
+      }
 
     | Infinite ->
         {
@@ -224,19 +224,20 @@ module TerrainAssets =
               NeutralSpecial = neutralSpecial
         }
 
-  let getAllAssets() =
-    Array.concat [
-      platforms
-      slopes
-      barriers
-      arches
-      pipes
-      interactive
-      collectibles
-      decorations
-      pillars
-      neutralSpecial
-    ]
+  let getAllAssets() = {
+    Collections.empty with
+        Platforms = platforms
+        Slopes = slopes
+        Barriers = barriers
+        Arches = arches
+        Pipes = pipes
+        Interactive = interactive
+        Collectibles = collectibles
+        Decorations = decorations
+        Pillars = pillars
+        NeutralSpecial = neutralSpecial
+  }
+
 
   let getNextColor(current: ColorVariant) =
     match current with

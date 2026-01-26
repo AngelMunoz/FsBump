@@ -102,7 +102,7 @@ module MapGenerator =
                 BoundingBox(tile.Position - halfSize, tile.Position + halfSize)
 
               if frustum.Intersects(box) then
-                env.ModelStore.GetMesh(Assets.getAsset tile)
+                env.ModelStore.GetMesh tile.AssetDefinition
                 |> ValueOption.bind(fun m -> draw {
                   mesh m
                   at tile.VisualOffset
