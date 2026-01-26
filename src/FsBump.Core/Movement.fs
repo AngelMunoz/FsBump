@@ -10,11 +10,11 @@ module Movement =
     let computeDirection(input: ActionState<PlayerAction>) =
       let x =
         (if input.Held.Contains MoveRight then 1.0f else 0.0f)
-        - (if input.Held.Contains MoveLeft then 1.0f else 0.0f)
+        - if input.Held.Contains MoveLeft then 1.0f else 0.0f
 
       let z =
         (if input.Held.Contains MoveBackward then 1.0f else 0.0f)
-        - (if input.Held.Contains MoveForward then 1.0f else 0.0f)
+        - if input.Held.Contains MoveForward then 1.0f else 0.0f
 
       let dir = Vector3(x, 0.0f, z)
 

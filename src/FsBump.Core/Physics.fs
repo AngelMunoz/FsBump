@@ -194,8 +194,10 @@ module Physics =
       else
         let nextPos = body.Position + axis * moveAmount
 
-        let mutable collided, groundedNow, finalPos, finalVel =
-          false, grounded, nextPos, body.Velocity
+        let mutable collided = false
+        let mutable groundedNow = grounded
+        let mutable finalPos = nextPos
+        let mutable finalVel = body.Velocity
 
         for i = 0 to tiles.Count - 1 do
           let t = tiles.[i]
@@ -239,10 +241,10 @@ module Physics =
 
         let vel =
           if collided then
-            (if isX then
-               Vector3(0.0f, finalVel.Y, finalVel.Z)
-             else
-               Vector3(finalVel.X, finalVel.Y, 0.0f))
+            if isX then
+              Vector3(0.0f, finalVel.Y, finalVel.Z)
+            else
+              Vector3(finalVel.X, finalVel.Y, 0.0f)
           else
             finalVel
 
@@ -275,7 +277,7 @@ module Physics =
     let body', grounded' =
       ({ body with Velocity = v }, false)
       |> Steps.verticalPass dt nearbyTiles env
-      |> (fun (b, g) -> Steps.horizontalPass true dt nearbyTiles env (b, g))
-      |> (fun (b, g) -> Steps.horizontalPass false dt nearbyTiles env (b, g))
+      |> Steps.horizontalPass true dt nearbyTiles env
+      |> Steps.horizontalPass false dt nearbyTiles env
 
     struct (body', grounded', didJump)

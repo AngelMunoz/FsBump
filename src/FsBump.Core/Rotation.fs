@@ -13,5 +13,5 @@ module Rotation =
 
   /// Calculate new rotation based on current velocity and state
   let update (dt: float32) (velocity: Vector3) (current: Quaternion) =
-    Internal.computeDelta dt velocity
-    |> (fun d -> Quaternion.Concatenate(current, d))
+    let d = Internal.computeDelta dt velocity
+    Quaternion.Concatenate(current, d)
