@@ -86,7 +86,35 @@ module Assets =
     "power"
     "signage_arrow_stand"
     "signage_arrow_wall"
+    "signage_arrows_left"
+    "signage_arrows_right"
     "spring_pad"
+    "platform_arrow_2x2x1"
+    "platform_arrow_4x4x1"
+    "platform_arrow_6x6x1"
+    "platform_hole_6x6x1"
+    "barrier_column_1x1x2"
+    "barrier_column_1x1x4"
+    "barrier_corner_1x1x1"
+    "barrier_corner_1x1x2"
+    "barrier_corner_1x1x4"
+    "button_base_small"
+    "railing_straight_single"
+    "railing_straight_double"
+    "railing_straight_padded"
+    "railing_corner_single"
+    "railing_corner_double"
+    "railing_corner_padded"
+    "structure_A"
+    "structure_B"
+    "structure_C"
+    "strut_horizontal"
+    "strut_vertical"
+  ]
+
+  let private neutralAssets = [
+      "pillar_1x1x1"; "pillar_1x1x2"; "pillar_1x1x4"; "pillar_1x1x8"
+      "pillar_2x2x2"; "pillar_2x2x4"; "pillar_2x2x8"
   ]
 
   let load(modelStore: IModelStore) =
@@ -94,8 +122,10 @@ module Assets =
       for a in baseAssets do
         modelStore.Load(sprintf "kaykit_platformer/%s/%s_%s" c a c)
 
+    for a in neutralAssets do
+        modelStore.Load(sprintf "kaykit_platformer/neutral/%s" a)
+
     modelStore.Load PlayerBall
-    modelStore.Load "kaykit_platformer/neutral/pillar_1x1x2"
     modelStore.Load "cube"
     modelStore.LoadTexture "gdb-switch-2"
     modelStore.LoadTexture "Textures/saturn_rings"

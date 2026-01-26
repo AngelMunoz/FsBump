@@ -21,7 +21,7 @@ module Program =
   type Model = {
     Player: PlayerModel
     Map: Tile array
-    PathState: PathState
+    PathGraph: PathGraph
     Env: AppEnv
     Camera: Camera.State
     Skybox: Skybox.State
@@ -75,6 +75,10 @@ module Program =
 
     let sSize, sOffset, sAsset = TileBuilder.getAssetData "platform_4x4x1" 0 env
 
+    // Initialize Infinite Mode
+    let initialGraph = MapGenerator.createInitialState GameMode.Infinite (Random.Shared.Next())
+    let mainPathId = initialGraph.Paths.[0].Id
+
     let startPlatform = {
       Type = TileType.Platform
       Collision = CollisionType.Solid
@@ -85,35 +89,23 @@ module Program =
       Style = 0
       AssetName = sAsset
       VisualOffset = sOffset
+      PathId = mainPathId
+      SegmentIndex = -1 // Special index for start
     }
-
-    let genConfig = {
-      MaxJumpHeight = 2.8f
-      MaxJumpDistance = 7.0f
-      SafetyBuffer = 0.1f
-    }
-
-    let initialPath = {
-      MapGenerator.createInitialState() with
-          Position = Vector3(0.0f, 0.0f, -2.0f)
-    }
-
-    let t1, st1 =
-      MapGenerator.generateSegment env initialPath [ startPlatform ] genConfig
-
-    let t2, st2 =
-      MapGenerator.generateSegment
-        env
-        st1
-        (startPlatform :: (t1 |> Array.toList))
-        genConfig
-
-    let t3, st3 =
-      MapGenerator.generateSegment
-        env
-        st2
-        (startPlatform :: (t1 |> Array.toList) @ (t2 |> Array.toList))
-        genConfig
+    
+    // Generate initial map (about 60 units worth)
+    let mutable currentGraph = initialGraph
+    let mutable currentMap = [| startPlatform |]
+    
+    // We need to simulate generation to get a decent start
+    // Force a few update cycles
+    for i in 1..3 do
+        let result = MapGenerator.Operations.updateMap env (VectorMath.add Vector3.Zero (VectorMath.create 0.0f 0.0f (float32 (-i * 20)))) currentMap currentGraph
+        match result with
+        | ValueSome(map, graph) ->
+            currentMap <- map
+            currentGraph <- graph
+        | ValueNone -> ()
 
     let spawnVec = MapGenerator.getSpawnPoint()
     let player, pCmd = Player.init spawnVec
@@ -123,10 +115,8 @@ module Program =
 
     {
       Player = player
-      Map =
-        [| startPlatform |]
-        |> (fun a -> Array.append a (Array.append t1 (Array.append t2 t3)))
-      PathState = st3
+      Map = currentMap
+      PathGraph = currentGraph
       Env = env
       Camera = Camera.init spawnVec
       Skybox = skyState
@@ -153,14 +143,14 @@ module Program =
           model.Env
           model.Player.Body.Position
           model.Map
-          model.PathState
+          model.PathGraph
 
       match result with
-      | ValueSome(map', path') ->
+      | ValueSome(map', graph') ->
         {
           model with
               Map = map'
-              PathState = path'
+              PathGraph = graph'
         },
         Cmd.none
       | ValueNone -> model, Cmd.none
@@ -204,12 +194,13 @@ module Program =
 
       let sky' = Skybox.update dt model.Skybox
 
+      // Simple check to trigger generation: if any active path end is near (80 units)
+      let needsUpdate = 
+          PathGraphSystem.getActivePaths model.PathGraph
+          |> Array.exists (fun p -> Vector3.Distance(player'.Body.Position, p.Position) < 80.0f)
+
       let genCmd =
-        if
-          MapGenerator.Operations.needsUpdate
-            player'.Body.Position
-            model.PathState
-        then
+        if needsUpdate then
           Cmd.deferNextFrame(Cmd.ofMsg GenerateMap)
         else
           Cmd.none
@@ -304,7 +295,7 @@ module Program =
       .Submit()
 
 
-    MapGenerator.draw model.Env frustum model.Map buffer
+    MapGenerator.draw model.Env frustum model.Player.Body.Position model.Map buffer
     Player.draw model.Env model.Player buffer
 
 

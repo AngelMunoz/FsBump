@@ -6,8 +6,8 @@ open Microsoft.Xna.Framework
 module Physics =
 
   module Constants =
-    let Gravity = -40.0f
-    let JumpSpeed = 15.0f
+    let Gravity = -30.0f
+    let JumpSpeed = 25.0f
     let StepHeight = 0.5f
     let SlopeSnapDistance = 1.0f
     let MoveSpeed = 10.0f

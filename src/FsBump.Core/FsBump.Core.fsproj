@@ -6,6 +6,11 @@
 
   <ItemGroup>
     <Compile Include="Domain.fs" />
+    <Compile Include="TerrainAssets.fs" />
+    <Compile Include="PathGraph.fs" />
+    <Compile Include="GenerationCommon.fs" />
+    <Compile Include="BuildingBlocks.fs" />
+    <Compile Include="InfiniteMode.fs" />
     <Compile Include="ModelStore.fs" />
     <Compile Include="Assets.fs" />
     <Compile Include="Audio.fs" />
