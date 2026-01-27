@@ -126,6 +126,10 @@ type FiniteModeConfig = {
   Difficulty: float32 // 0.0-1.0
 }
 
+type GenerationType =
+  | PathBased
+  | ZoneBased
+
 type GameMode =
   | Infinite
   | Exploration of FiniteModeConfig

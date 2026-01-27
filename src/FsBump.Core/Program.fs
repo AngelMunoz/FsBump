@@ -10,6 +10,7 @@ open Mibo.Elmish.Graphics2D
 open Mibo.Input
 open FsBump.Core.Audio
 open FsBump.Core.RootComposition
+open FsBump.WorldGeneration
 
 module Program =
 
@@ -27,6 +28,8 @@ module Program =
     Skybox: Skybox.State
     SkyboxEffect: Effect
     TouchState: TouchLogic.State
+    Generation: Generation.Model
+    UseZoneGeneration: bool
   }
 
   let mergeInput
@@ -40,6 +43,14 @@ module Program =
           Released = Set.union a.Released b.Released
     }
 
+  let private getTilesForRender(model: Model) : Tile[] =
+    if model.UseZoneGeneration then
+      match model.Generation.ParkResult with
+      | ValueSome parkResult -> parkResult.ParkTiles
+      | ValueNone -> Array.empty
+    else
+      model.Map
+
   // ─────────────────────────────────────────────────────────────
   // Messages
   // ─────────────────────────────────────────────────────────────
@@ -51,6 +62,7 @@ module Program =
     | GenerateMap
     | PlayAudio of AudioId
     | BakeGeometry
+    | Generation of Generation.Msg
 
   // ─────────────────────────────────────────────────────────────
   // Init
@@ -81,7 +93,10 @@ module Program =
 
     let sSize, sOffset, sAsset = TileBuilder.getAssetData asset env
 
-    // Initialize Infinite Mode
+    // Initialize with default path-based generation
+    // Toggle 'useZoneGeneration' below to enable new zone-based generation system
+    let useZoneGeneration = false
+
     let initialGraph =
       MapGenerator.createInitialState GameMode.Infinite (Random.Shared.Next())
 
@@ -123,6 +138,13 @@ module Program =
     let spawnVec = MapGenerator.getSpawnPoint()
     let player, pCmd = Player.init spawnVec
 
+    let struct (generationModel, generationCmd) =
+      Generation.init {
+        ParkDiameter = 400.0f<FsBump.WorldGeneration.WorldUnits>
+        Seed = 12345
+        ChunkSize = { Width = 100; Depth = 100 }
+      }
+
     let vp = ctx.GraphicsDevice.Viewport
     let screenSize = Vector2(float32 vp.Width, float32 vp.Height)
 
@@ -135,8 +157,10 @@ module Program =
       Skybox = skyState
       SkyboxEffect = skyEffect
       TouchState = TouchLogic.init screenSize
+      Generation = generationModel
+      UseZoneGeneration = useZoneGeneration
     },
-    Cmd.map PlayerMsg pCmd
+    Cmd.batch2(Cmd.map Generation generationCmd, Cmd.map PlayerMsg pCmd)
 
   // ─────────────────────────────────────────────────────────────
   // Update
@@ -150,20 +174,31 @@ module Program =
             Player = { model.Player with Input = input }
       },
       Cmd.none
+    | Generation genMsg ->
+      let struct (newGenModel, genCmd) =
+        Generation.update genMsg model.Generation
+
+      { model with Generation = newGenModel }, Cmd.map Generation genCmd
     | GenerateMap ->
       let result =
-        MapGenerator.Operations.updateMap
-          model.Env
-          model.Player.Body.Position
-          model.Map
-          model.PathGraph
+        match model.PathGraph.Mode with
+        | Infinite ->
+          // Use existing path-based generation
+          MapGenerator.Operations.updateMap
+            model.Env
+            model.Player.Body.Position
+            model.Map
+            model.PathGraph
+        | _ ->
+          // Handle other modes (placeholder for now)
+          ValueNone
 
       match result with
-      | ValueSome(map', graph') ->
+      | ValueSome(map, graph) ->
         {
           model with
-              Map = map'
-              PathGraph = graph'
+              Map = map
+              PathGraph = graph
         },
         Cmd.none
       | ValueNone -> model, Cmd.none
@@ -202,7 +237,7 @@ module Program =
           dt
           camera'.Yaw
           model.Env
-          model.Map
+          (getTilesForRender model)
           playerModelForUpdate
 
       let sky' = Skybox.update dt model.Skybox
@@ -313,7 +348,7 @@ module Program =
       model.Env
       frustum
       model.Player.Body.Position
-      model.Map
+      (getTilesForRender model)
       buffer
 
     Player.draw model.Env model.Player buffer
@@ -348,8 +383,7 @@ module Program =
           Batch2DConfig.defaults with
               ClearColor = ValueNone
         }
-        viewUI
-    )
+        viewUI)
     |> Program.withInput
     |> Program.withSubscription(fun ctx _ ->
       InputMapper.subscribeStatic

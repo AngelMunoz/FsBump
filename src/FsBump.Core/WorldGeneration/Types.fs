@@ -91,10 +91,10 @@ type ZoneCharacteristics = {
 
 /// Defines the dimensions of a platform
 [<Struct>]
-type PlatformSize = { 
+type PlatformSize = {
   /// Width of the platform in world units
   Width: int
-  /// Depth of the platform in world units  
+  /// Depth of the platform in world units
   Depth: int
   /// Height of the platform in world units
   Height: int
@@ -114,7 +114,7 @@ type PlatformVariant =
 
 /// Defines the size of a chunk in tiles
 [<Struct>]
-type ChunkSize = { 
+type ChunkSize = {
   /// Width of the chunk in tiles
   Width: int
   /// Depth of the chunk in tiles
@@ -123,7 +123,7 @@ type ChunkSize = {
 
 /// Coordinate location of a chunk in the world grid
 [<Struct>]
-type ChunkCoord = { 
+type ChunkCoord = {
   /// X coordinate in chunk grid
   X: int
   /// Z coordinate in chunk grid
@@ -309,33 +309,12 @@ type ParkConfig = {
 
 /// Player's position and velocity state
 [<Struct>]
-type PlayerPosition = { 
+type PlayerPosition = {
   /// Current world position
   Position: Vector3
   /// Current velocity vector
   Velocity: Vector3
 }
-
-/// Messages for world generation operations
-type GenerationMsg =
-  /// Initialize a new park with given configuration
-  | InitializePark of ParkConfig
-  /// Generate a specific chunk
-  | GenerateChunk of ChunkCoord
-  /// Chunk generation completed
-  | ChunkGenerated of ChunkCoord * FsBump.Core.Tile array
-  /// Check if player crossed a gate
-  | CheckGateCrossing of PlayerPosition * Vector3
-  /// Reset player to park spawn point
-  | ResetToPark of Vector3
-  /// Save current world state
-  | SaveWorld of WorldSaveData
-  /// Load a world state
-  | LoadWorld of WorldSaveData
-  /// Save a finite level
-  | SaveFiniteLevel of FiniteLevelSaveData
-  /// Load a finite level
-  | LoadFiniteLevel of FiniteLevelSaveData
 
 /// Result of a chunk generation operation
 type ChunkGenerationResult = {
@@ -383,29 +362,6 @@ type ParkGenerationResult = {
   GenerationTime: float32<Seconds>
 }
 
-/// Main model for world generation state
-type GenerationModel = {
-  /// Optional park generation result
-  ParkResult: ParkGenerationResult voption
-  /// Current chunk manager state
-  ChunkManager: ChunkManager
-  /// Currently active biome/zone type
-  ActiveBiomeIntensity: ZoneType
-  /// Last gate the player crossed
-  LastGateCrossed: GateType voption
-  /// Array of checkpoint states
-  Checkpoints: CheckpointState array
-}
-
-/// Commands for updating generation state
-type GenerationCmd =
-  /// Update the current tiles
-  | UpdateTiles of FsBump.Core.Tile array
-  /// Update the active biome/zone
-  | UpdateBiomeIntensity of ZoneType
-  /// Update checkpoint states
-  | UpdateCheckpoints of CheckpointState array
-
 /// Interface for noise generation
 type INoiseGenerator =
   /// Generate 2D Perlin noise
@@ -413,7 +369,7 @@ type INoiseGenerator =
   /// <param name="y">Y coordinate</param>
   /// <returns>Noise value between -1.0 and 1.0</returns>
   abstract member Noise2D: x: float32 * y: float32 -> float32
-  
+
   /// Generate 3D Perlin noise
   /// <param name="x">X coordinate</param>
   /// <param name="y">Y coordinate</param>
@@ -426,7 +382,7 @@ type INoiseGenerator =
   /// <param name="y">Y coordinate</param>
   /// <returns>Noise value between -1.0 and 1.0</returns>
   abstract member OctaveNoise2D: x: float32 * y: float32 -> float32
-  
+
   /// Generate 3D octave noise with default settings
   /// <param name="x">X coordinate</param>
   /// <param name="y">Y coordinate</param>

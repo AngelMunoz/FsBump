@@ -9,6 +9,9 @@
     <Compile Include="WorldGeneration/Types.fs" />
     <Compile Include="WorldGeneration/Noise.fs" />
     <Compile Include="WorldGeneration/Zone.fs" />
+    <Compile Include="WorldGeneration/Park.fs" />
+    <Compile Include="WorldGeneration/Chunk.fs" />
+    <Compile Include="Generation.fs" />
     <Compile Include="TerrainAssets.fs" />
     <Compile Include="PathGraph.fs" />
     <Compile Include="GenerationCommon.fs" />
