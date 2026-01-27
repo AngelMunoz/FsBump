@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <Compile Include="Domain.fs" />
+    <Compile Include="WorldGeneration/Types.fs" />
+    <Compile Include="WorldGeneration/Noise.fs" />
+    <Compile Include="WorldGeneration/Zone.fs" />
     <Compile Include="TerrainAssets.fs" />
     <Compile Include="PathGraph.fs" />
     <Compile Include="GenerationCommon.fs" />
