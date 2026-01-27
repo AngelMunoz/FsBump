@@ -341,14 +341,14 @@ module Program =
          "Effects/ShadowCaster"
        |> PipelineConfig.withShader ShaderBase.PBRForward "Effects/PBR")
       view
-    |> Program.withRenderer(fun g ->
+    |> Program.withRenderer(
       Graphics2D.Batch2DRenderer.createWithConfig
-        g
         {
           Batch2DConfig.defaults with
               ClearColor = ValueNone
         }
-        viewUI)
+        viewUI
+    )
     |> Program.withInput
     |> Program.withSubscription(fun ctx _ ->
       InputMapper.subscribeStatic
