@@ -341,8 +341,9 @@ module Program =
          "Effects/ShadowCaster"
        |> PipelineConfig.withShader ShaderBase.PBRForward "Effects/PBR")
       view
-    |> Program.withRenderer(
+    |> Program.withRenderer(fun g ->
       Graphics2D.Batch2DRenderer.createWithConfig
+        g
         {
           Batch2DConfig.defaults with
               ClearColor = ValueNone
