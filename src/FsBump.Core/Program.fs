@@ -189,7 +189,8 @@ module Program =
             model.Player.Body.Position
             model.Map
             model.PathGraph
-        | _ ->
+        | Exploration _
+        | Challenge _ ->
           // Handle other modes (placeholder for now)
           ValueNone
 
