@@ -20,7 +20,7 @@ module Skybox =
     (state: State)
     =
     fun (device: GraphicsDevice) (camera: Camera) ->
-      env.ModelStore.Get "cube"
+      env.ModelStore.GetSpecific Specific.Cube
       |> ValueOption.iter(fun model ->
         // Ensure the model uses our custom skybox effect
         for m in model.Meshes do

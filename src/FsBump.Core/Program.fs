@@ -10,6 +10,7 @@ open Mibo.Elmish.Graphics2D
 open Mibo.Input
 open FsBump.Core.Audio
 open FsBump.Core.RootComposition
+open FsBump.WorldGeneration
 
 module Program =
 
@@ -21,12 +22,14 @@ module Program =
   type Model = {
     Player: PlayerModel
     Map: Tile array
-    PathState: PathState
+    PathGraph: PathGraph
     Env: AppEnv
     Camera: Camera.State
     Skybox: Skybox.State
     SkyboxEffect: Effect
     TouchState: TouchLogic.State
+    Generation: Generation.Model
+    UseZoneGeneration: bool
   }
 
   let mergeInput
@@ -40,6 +43,14 @@ module Program =
           Released = Set.union a.Released b.Released
     }
 
+  let private getTilesForRender(model: Model) : Tile[] =
+    if model.UseZoneGeneration then
+      match model.Generation.ParkResult with
+      | ValueSome parkResult -> parkResult.ParkTiles
+      | ValueNone -> Array.empty
+    else
+      model.Map
+
   // ─────────────────────────────────────────────────────────────
   // Messages
   // ─────────────────────────────────────────────────────────────
@@ -51,6 +62,7 @@ module Program =
     | GenerateMap
     | PlayAudio of AudioId
     | BakeGeometry
+    | Generation of Generation.Msg
 
   // ─────────────────────────────────────────────────────────────
   // Init
@@ -73,67 +85,82 @@ module Program =
     let skyEffect = Assets.skyboxEffect ctx
     let skyState = Skybox.init()
 
-    let sSize, sOffset, sAsset = TileBuilder.getAssetData "platform_4x4x1" 0 env
+    let asset = {
+      Name = "platform_4x4x1"
+      Location =
+        AssetNamingPattern.createName "platform_4x4x1" ColorVariant.Blue
+    }
+
+    let sSize, sOffset, sAsset = TileBuilder.getAssetData asset env
+
+    // Initialize with default path-based generation
+    // Toggle 'useZoneGeneration' below to enable new zone-based generation system
+    let useZoneGeneration = false
+
+    let initialGraph =
+      MapGenerator.createInitialState GameMode.Infinite (Random.Shared.Next())
+
+    let mainPathId = initialGraph.Paths.[0].Id
 
     let startPlatform = {
       Type = TileType.Platform
       Collision = CollisionType.Solid
       Position = Vector3.Zero
       Rotation = 0.0f
-      Variant = 0
+      Variant = ColorVariant.Blue
       Size = sSize
-      Style = 0
-      AssetName = sAsset
+      AssetDefinition = sAsset
       VisualOffset = sOffset
+      PathId = mainPathId
+      SegmentIndex = -1 // Special index for start
     }
 
-    let genConfig = {
-      MaxJumpHeight = 2.8f
-      MaxJumpDistance = 7.0f
-      SafetyBuffer = 0.1f
-    }
+    // Generate initial map (about 60 units worth)
+    let mutable currentGraph = initialGraph
+    let mutable currentMap = [| startPlatform |]
 
-    let initialPath = {
-      MapGenerator.createInitialState() with
-          Position = Vector3(0.0f, 0.0f, -2.0f)
-    }
+    // We need to simulate generation to get a decent start
+    // Force a few update cycles
+    for i in 1..3 do
+      let result =
+        MapGenerator.Operations.updateMap
+          env
+          (Vector3.Zero + Vector3(0.0f, 0.0f, float32(-i * 20)))
+          currentMap
+          currentGraph
 
-    let t1, st1 =
-      MapGenerator.generateSegment env initialPath [ startPlatform ] genConfig
-
-    let t2, st2 =
-      MapGenerator.generateSegment
-        env
-        st1
-        (startPlatform :: (t1 |> Array.toList))
-        genConfig
-
-    let t3, st3 =
-      MapGenerator.generateSegment
-        env
-        st2
-        (startPlatform :: (t1 |> Array.toList) @ (t2 |> Array.toList))
-        genConfig
+      match result with
+      | ValueSome(map, graph) ->
+        currentMap <- map
+        currentGraph <- graph
+      | ValueNone -> ()
 
     let spawnVec = MapGenerator.getSpawnPoint()
     let player, pCmd = Player.init spawnVec
+
+    let struct (generationModel, generationCmd) =
+      Generation.init {
+        ParkDiameter = 400.0f<FsBump.WorldGeneration.WorldUnits>
+        Seed = 12345
+        ChunkSize = { Width = 100; Depth = 100 }
+      }
 
     let vp = ctx.GraphicsDevice.Viewport
     let screenSize = Vector2(float32 vp.Width, float32 vp.Height)
 
     {
       Player = player
-      Map =
-        [| startPlatform |]
-        |> (fun a -> Array.append a (Array.append t1 (Array.append t2 t3)))
-      PathState = st3
+      Map = currentMap
+      PathGraph = currentGraph
       Env = env
       Camera = Camera.init spawnVec
       Skybox = skyState
       SkyboxEffect = skyEffect
       TouchState = TouchLogic.init screenSize
+      Generation = generationModel
+      UseZoneGeneration = useZoneGeneration
     },
-    Cmd.map PlayerMsg pCmd
+    Cmd.batch2(Cmd.map Generation generationCmd, Cmd.map PlayerMsg pCmd)
 
   // ─────────────────────────────────────────────────────────────
   // Update
@@ -147,20 +174,32 @@ module Program =
             Player = { model.Player with Input = input }
       },
       Cmd.none
+    | Generation genMsg ->
+      let struct (newGenModel, genCmd) =
+        Generation.update genMsg model.Generation
+
+      { model with Generation = newGenModel }, Cmd.map Generation genCmd
     | GenerateMap ->
       let result =
-        MapGenerator.Operations.updateMap
-          model.Env
-          model.Player.Body.Position
-          model.Map
-          model.PathState
+        match model.PathGraph.Mode with
+        | Infinite ->
+          // Use existing path-based generation
+          MapGenerator.Operations.updateMap
+            model.Env
+            model.Player.Body.Position
+            model.Map
+            model.PathGraph
+        | Exploration _
+        | Challenge _ ->
+          // Handle other modes (placeholder for now)
+          ValueNone
 
       match result with
-      | ValueSome(map', path') ->
+      | ValueSome(map, graph) ->
         {
           model with
-              Map = map'
-              PathState = path'
+              Map = map
+              PathGraph = graph
         },
         Cmd.none
       | ValueNone -> model, Cmd.none
@@ -199,17 +238,19 @@ module Program =
           dt
           camera'.Yaw
           model.Env
-          model.Map
+          (getTilesForRender model)
           playerModelForUpdate
 
       let sky' = Skybox.update dt model.Skybox
 
+      // Simple check to trigger generation: if any active path end is near (80 units)
+      let needsUpdate =
+        PathGraphSystem.getActivePaths model.PathGraph
+        |> Array.exists(fun p ->
+          Vector3.Distance(player'.Body.Position, p.Position) < 80.0f)
+
       let genCmd =
-        if
-          MapGenerator.Operations.needsUpdate
-            player'.Body.Position
-            model.PathState
-        then
+        if needsUpdate then
           Cmd.deferNextFrame(Cmd.ofMsg GenerateMap)
         else
           Cmd.none
@@ -304,7 +345,13 @@ module Program =
       .Submit()
 
 
-    MapGenerator.draw model.Env frustum model.Map buffer
+    MapGenerator.draw
+      model.Env
+      frustum
+      model.Player.Body.Position
+      (getTilesForRender model)
+      buffer
+
     Player.draw model.Env model.Player buffer
 
 
@@ -330,6 +377,14 @@ module Program =
          "Effects/ShadowCaster"
        |> PipelineConfig.withShader ShaderBase.PBRForward "Effects/PBR")
       view
+    |> Program.withRenderer(fun g ->
+      Graphics2D.Batch2DRenderer.createWithConfig
+        g
+        {
+          Batch2DConfig.defaults with
+              ClearColor = ValueNone
+        }
+        viewUI)
     |> Program.withInput
     |> Program.withSubscription(fun ctx _ ->
       InputMapper.subscribeStatic

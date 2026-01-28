@@ -11,29 +11,18 @@ open Mibo.Rendering.Graphics3D
 module ModelStore =
   open System
 
+  [<Literal>]
+  let PlayerBall = "kaykit_platformer/blue/ball_blue"
+
+  [<Literal>]
+  let Cube = "cube"
+
   type BakedShape = {
     Min: Vector3
     Max: Vector3
     Vertices: Vector3[]
     Indices: int[]
   }
-
-  module Naming =
-    let getShapeKey(name: string) =
-      if name.StartsWith("kaykit_platformer/") then
-        let parts = name.Split('/')
-
-        if parts.Length >= 3 then
-          let baseName = parts.[2]
-
-          if baseName.Contains("_") then
-            baseName.Substring(0, baseName.LastIndexOf('_'))
-          else
-            baseName
-        else
-          name
-      else
-        name
 
   module Geometry =
     let extract(model: Model) =
@@ -196,7 +185,7 @@ module ModelStore =
 
   module Persistence =
     let save ctx (content: string) =
-      let path = Path.Combine(ctx.Content.RootDirectory, "collision.txt")
+      let path = "src/FsBump.Core/Content/collision.txt"
       File.WriteAllText(path, content)
       path
 
@@ -204,7 +193,7 @@ module ModelStore =
       Assets.fromCustom
         "collision.txt"
         (fun _ ->
-          use str = TitleContainer.OpenStream("Content/collision.txt")
+          use str = TitleContainer.OpenStream "Content/collision.txt"
           use reader = new StreamReader(str)
           Serialization.deserialize reader)
         ctx
@@ -215,6 +204,11 @@ module ModelStore =
     let boundsCache = Dictionary<string, BoundingBox>()
     let geometryCache = Dictionary<string, ModelGeometry>()
     let textureCache = Dictionary<string, Texture2D>()
+
+    let getSpecificPath =
+      function
+      | Specific.PlayerBall -> PlayerBall
+      | Specific.Cube -> Cube
 
     let populateCaches() =
       try
@@ -239,7 +233,7 @@ module ModelStore =
         member _.Bake() =
           let shapesStr =
             modelCache
-            |> Seq.map(fun kv -> Naming.getShapeKey kv.Key, kv.Value)
+            |> Seq.map(fun kv -> kv.Key, kv.Value)
             |> Seq.distinctBy fst
             |> Seq.map(fun (key, model) ->
               let bounds, geo = Geometry.extract model
@@ -249,41 +243,70 @@ module ModelStore =
           let path = Persistence.save ctx shapesStr
           printfn "Baking complete. Saved to %s" path
 
-        member _.Load(assetName: string) =
+        member _.Load(asset: AssetDefinition) =
+          let assetName = AssetDefinition.getLoadPath asset
+
           if not(modelCache.ContainsKey assetName) then
             try
               let model = Assets.model assetName ctx
-              modelCache.[assetName] <- model
-              let key = Naming.getShapeKey assetName
+              modelCache[assetName] <- model
 
-              if not(geometryCache.ContainsKey key) then
+              if not(geometryCache.ContainsKey assetName) then
                 let bounds, geometry = Geometry.extract model
-                boundsCache.[key] <- bounds
-                geometryCache.[key] <- geometry
+                boundsCache[assetName] <- bounds
+                geometryCache[assetName] <- geometry
 
               match Mesh.fromModel model |> Seq.tryHead with
-              | Some mesh -> meshCache.[assetName] <- mesh
+              | Some mesh -> meshCache[assetName] <- mesh
               | None -> ()
             with ex ->
-              printfn "Failed to load asset '%s': %O" assetName ex
+              printfn "Failed to load asset '%s': %O" asset.Name ex
 
-        member _.Get(assetName: string) =
+        member _.LoadSpecific(specific: Specific) =
+          let path = getSpecificPath specific
+
+          try
+            let model = Assets.model path ctx
+            modelCache[path] <- model
+
+            if not(geometryCache.ContainsKey path) then
+              let bounds, geometry = Geometry.extract model
+              boundsCache[path] <- bounds
+              geometryCache[path] <- geometry
+
+            if not(meshCache.ContainsKey path) then
+              match Mesh.fromModel model |> Seq.tryHead with
+              | Some mesh -> meshCache[path] <- mesh
+              | None -> ()
+          with ex ->
+            printfn "Failed to load specific asset '%A': %O" specific ex
+
+
+        member _.Get(asset: AssetDefinition) =
+          let assetName = AssetDefinition.getLoadPath asset
+
           match modelCache.TryGetValue assetName with
           | true, v -> ValueSome v
           | _ -> ValueNone
 
-        member _.GetMesh(assetName: string) =
+        member _.GetMesh(asset: AssetDefinition) =
+          let assetName = AssetDefinition.getLoadPath asset
+
           match meshCache.TryGetValue assetName with
           | true, v -> ValueSome v
           | _ -> ValueNone
 
-        member _.GetBounds(assetName: string) =
-          match boundsCache.TryGetValue(Naming.getShapeKey assetName) with
+        member _.GetBounds(asset: AssetDefinition) =
+          let assetName = AssetDefinition.getLoadPath asset
+
+          match boundsCache.TryGetValue(assetName) with
           | true, v -> ValueSome v
           | _ -> ValueNone
 
-        member _.GetGeometry(assetName: string) =
-          match geometryCache.TryGetValue(Naming.getShapeKey assetName) with
+        member _.GetGeometry(asset: AssetDefinition) =
+          let assetName = AssetDefinition.getLoadPath asset
+
+          match geometryCache.TryGetValue(assetName) with
           | true, v -> ValueSome v
           | _ -> ValueNone
 
@@ -296,6 +319,36 @@ module ModelStore =
 
         member _.GetTexture(name) =
           match textureCache.TryGetValue name with
+          | true, v -> ValueSome v
+          | _ -> ValueNone
+
+        member _.GetSpecificGeometry
+          (specific: Specific)
+          : ModelGeometry voption =
+          let path = getSpecificPath specific
+
+          match geometryCache.TryGetValue path with
+          | true, v -> ValueSome v
+          | _ -> ValueNone
+
+        member _.GetSpecificMesh(specific: Specific) : Mesh voption =
+          let path = getSpecificPath specific
+
+          match meshCache.TryGetValue path with
+          | true, v -> ValueSome v
+          | _ -> ValueNone
+
+        member _.GetSpecificBounds(arg: Specific) : BoundingBox voption =
+          let path = getSpecificPath arg
+
+          match boundsCache.TryGetValue path with
+          | true, v -> ValueSome v
+          | _ -> ValueNone
+
+        member _.GetSpecific(specific) : Model voption =
+          let path = getSpecificPath specific
+
+          match modelCache.TryGetValue path with
           | true, v -> ValueSome v
           | _ -> ValueNone
     }

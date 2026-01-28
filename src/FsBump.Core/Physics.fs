@@ -6,8 +6,8 @@ open Microsoft.Xna.Framework
 module Physics =
 
   module Constants =
-    let Gravity = -40.0f
-    let JumpSpeed = 15.0f
+    let Gravity = -30.0f
+    let JumpSpeed = 25.0f
     let StepHeight = 0.5f
     let SlopeSnapDistance = 1.0f
     let MoveSpeed = 10.0f
@@ -73,30 +73,15 @@ module Physics =
                   a + ab * (vb * denom) + ac * (vc * denom)
 
   module Mesh =
-    /// Maps a tile to its full asset path
-    let getAssetId(tile: Tile) =
-      let color =
-        match tile.Variant % 4 with
-        | 0 -> "blue"
-        | 1 -> "green"
-        | 2 -> "red"
-        | _ -> "yellow"
-
-      if String.IsNullOrEmpty tile.AssetName then
-        ""
-      elif tile.AssetName.Contains("/") then
-        tile.AssetName
-      else
-        sprintf "kaykit_platformer/%s/%s_%s" color tile.AssetName color
 
     /// Resolves collision against mesh geometry
     let resolve (body: Body) (tile: Tile) (env: #IModelStoreProvider) =
-      env.ModelStore.GetGeometry(getAssetId tile)
+      env.ModelStore.GetGeometry(tile.AssetDefinition)
       |> ValueOption.bind(fun geo ->
         let world =
-          Matrix.CreateTranslation(tile.VisualOffset)
-          * Matrix.CreateRotationY(tile.Rotation)
-          * Matrix.CreateTranslation(tile.Position)
+          Matrix.CreateTranslation tile.VisualOffset
+          * Matrix.CreateRotationY tile.Rotation
+          * Matrix.CreateTranslation tile.Position
 
         let mutable p, v, hit = body.Position, body.Velocity, false
         let half = tile.Size * 0.5f
@@ -209,8 +194,10 @@ module Physics =
       else
         let nextPos = body.Position + axis * moveAmount
 
-        let mutable collided, groundedNow, finalPos, finalVel =
-          false, grounded, nextPos, body.Velocity
+        let mutable collided = false
+        let mutable groundedNow = grounded
+        let mutable finalPos = nextPos
+        let mutable finalVel = body.Velocity
 
         for i = 0 to tiles.Count - 1 do
           let t = tiles.[i]
@@ -254,10 +241,10 @@ module Physics =
 
         let vel =
           if collided then
-            (if isX then
-               Vector3(0.0f, finalVel.Y, finalVel.Z)
-             else
-               Vector3(finalVel.X, finalVel.Y, 0.0f))
+            if isX then
+              Vector3(0.0f, finalVel.Y, finalVel.Z)
+            else
+              Vector3(finalVel.X, finalVel.Y, 0.0f)
           else
             finalVel
 
@@ -290,7 +277,7 @@ module Physics =
     let body', grounded' =
       ({ body with Velocity = v }, false)
       |> Steps.verticalPass dt nearbyTiles env
-      |> (fun (b, g) -> Steps.horizontalPass true dt nearbyTiles env (b, g))
-      |> (fun (b, g) -> Steps.horizontalPass false dt nearbyTiles env (b, g))
+      |> Steps.horizontalPass true dt nearbyTiles env
+      |> Steps.horizontalPass false dt nearbyTiles env
 
     struct (body', grounded', didJump)

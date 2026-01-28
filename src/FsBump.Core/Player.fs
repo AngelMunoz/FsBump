@@ -278,7 +278,7 @@ module Player =
     (model: PlayerModel)
     (buffer: PipelineBuffer<RenderCommand>)
     =
-    env.ModelStore.GetMesh Assets.PlayerBall
+    env.ModelStore.GetSpecificMesh Specific.PlayerBall
     |> ValueOption.iter(View.drawPlayer model buffer)
 
     env.ModelStore.GetTexture Assets.SaturnRings

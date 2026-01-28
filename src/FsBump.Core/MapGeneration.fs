@@ -5,442 +5,29 @@ open Microsoft.Xna.Framework
 open Mibo.Rendering.Graphics3D
 
 // ─────────────────────────────────────────────────────────────
-// Tile Construction
-// ─────────────────────────────────────────────────────────────
-
-module TileBuilder =
-
-  let create type' collision pos rot variant size style asset offset = {
-    Type = type'
-    Collision = collision
-    Position = pos
-    Rotation = rot
-    Variant = variant
-    Size = size
-    Style = style
-    AssetName = asset
-    VisualOffset = offset
-  }
-
-  let getAssetData asset color (env: #IModelStoreProvider) =
-    let colorStr =
-      match color % 4 with
-      | 0 -> "blue"
-      | 1 -> "green"
-      | 2 -> "red"
-      | _ -> "yellow"
-
-    let full = sprintf "kaykit_platformer/%s/%s_%s" colorStr asset colorStr
-
-    match env.ModelStore.GetBounds full with
-    | ValueSome b -> b.Max - b.Min, -((b.Min + b.Max) * 0.5f), asset
-    | ValueNone -> Vector3.One, -Vector3.Up * 0.5f, asset
-
-  let floor pos color (env: #IModelStoreProvider) =
-    let size, offset, asset = getAssetData "platform_1x1x1" color env
-    create TileType.Floor CollisionType.Solid pos 0.0f color size 0 asset offset
-
-  let wall pos color size asset offset =
-    create TileType.Wall CollisionType.Solid pos 0.0f color size 0 asset offset
-
-  let decoration pos rot color size asset offset type' collision =
-    create type' collision pos rot color size 0 asset offset
-
-  let platform pos color size assetName offset =
-    create
-      TileType.Platform
-      CollisionType.Solid
-      pos
-      0.0f
-      color
-      size
-      0
-      assetName
-      offset
-
-  let collectible pos color size asset offset =
-    create
-      TileType.Collectible
-      CollisionType.Passthrough
-      pos
-      0.0f
-      color
-      size
-      0
-      asset
-      offset
-
-  let slope pos rot color size asset offset =
-    create
-      TileType.SlopeTile
-      CollisionType.Slope
-      pos
-      rot
-      color
-      size
-      0
-      asset
-      offset
-
-// ─────────────────────────────────────────────────────────────
-// Validation
-// ─────────────────────────────────────────────────────────────
-
-module Validation =
-  let getTileBounds (t: Tile) (buffer: float32) =
-    let half = t.Size * 0.5f + Vector3(buffer, buffer, buffer)
-    BoundingBox(t.Position - half, t.Position + half)
-
-  let checkOverlap
-    (newTiles: Tile list)
-    (obstacles: Tile list)
-    (config: GenerationConfig)
-    =
-    let obstacleBoxes =
-      obstacles |> List.map(fun t -> getTileBounds t config.SafetyBuffer)
-
-    let checkBoxes = newTiles |> List.map(fun t -> getTileBounds t 0.0f)
-
-    checkBoxes
-    |> List.exists(fun cb ->
-      obstacleBoxes |> List.exists(fun ob -> cb.Intersects(ob)))
-
-// ─────────────────────────────────────────────────────────────
-// State Operations
-// ─────────────────────────────────────────────────────────────
-
-module StateOps =
-  let advance dist (state: PathState) = {
-    state with
-        Position = state.Position + state.Direction * dist
-  }
-
-  let moveY offset (state: PathState) = {
-    state with
-        Position = state.Position + Vector3.Up * offset
-  }
-
-  let turn angle (state: PathState) =
-    let nextDir =
-      Vector3.Transform(state.Direction, Matrix.CreateRotationY(angle))
-
-    let roundedDir =
-      Vector3(
-        MathF.Round(nextDir.X),
-        MathF.Round(nextDir.Y),
-        MathF.Round(nextDir.Z)
-      )
-
-    {
-      state with
-          Direction = roundedDir
-          PreviousDirection = state.Direction
-    }
-
-// ─────────────────────────────────────────────────────────────
-// Building Blocks
-// ─────────────────────────────────────────────────────────────
-
-module BuildingBlocks =
-
-  let addEdgeDetails
-    (env: #IRandomProvider & #IModelStoreProvider)
-    (pos: Vector3)
-    (color: int)
-    (isLeft: bool)
-    (tiles: ResizeArray<Tile>)
-    =
-    let roll = env.Random.NextDouble()
-
-    if roll < 0.15 then
-      let asset =
-        match env.Random.Next(0, 3) with
-        | 0 -> "barrier_1x1x1"
-        | 1 -> "barrier_1x1x2"
-        | _ -> "barrier_2x1x1"
-
-      let size, offset, assetName = TileBuilder.getAssetData asset color env
-
-      tiles.Add(
-        TileBuilder.wall
-          (pos + Vector3.Up * size.Y * 0.5f + Vector3.Up * 0.5f)
-          color
-          size
-          assetName
-          offset
-      )
-    elif roll < 0.3 then
-      let asset =
-        match env.Random.Next(0, 3) with
-        | 0 -> "flag_A"
-        | 1 -> "signage_arrow_stand"
-        | _ -> "flag_B"
-
-      let size, offset, assetName = TileBuilder.getAssetData asset color env
-
-      let rot = if isLeft then -MathHelper.PiOver2 else MathHelper.PiOver2
-
-      tiles.Add(
-        TileBuilder.decoration
-          (pos + Vector3.Up * size.Y * 0.5f + Vector3.Up * 0.5f)
-          rot
-          color
-          size
-          assetName
-          offset
-          TileType.Decoration
-          CollisionType.Passthrough
-      )
-    elif roll < 0.4 then
-      let asset = if env.Random.Next(0, 2) = 0 then "cone" else "button_base"
-
-      let size, offset, assetName = TileBuilder.getAssetData asset color env
-
-      let rot = float32(env.Random.NextDouble()) * MathHelper.TwoPi
-
-      tiles.Add(
-        TileBuilder.decoration
-          (pos + Vector3.Up * size.Y * 0.5f + Vector3.Up * 0.5f)
-          rot
-          color
-          size
-          assetName
-          offset
-          TileType.Decoration
-          CollisionType.Climbable
-      )
-
-  let addRow
-    (env: #IRandomProvider & #IModelStoreProvider)
-    (tiles: ResizeArray<Tile>)
-    (state: PathState)
-    =
-    let nextState = state |> StateOps.advance 1.0f
-    let right = Vector3.Cross(Vector3.Up, state.Direction)
-
-    for w in -state.Width .. state.Width do
-      let tilePos = nextState.Position + right * float32 w
-      tiles.Add(TileBuilder.floor tilePos state.CurrentColor env)
-
-      if abs w = state.Width then
-        addEdgeDetails env tilePos state.CurrentColor (w < 0) tiles
-
-    nextState
-
-  let addSlope
-    (env: #IRandomProvider & #IModelStoreProvider)
-    (tiles: ResizeArray<Tile>)
-    (prevHalf: float32)
-    (state: PathState)
-    =
-    let goUp = env.Random.NextDouble() > 0.5
-
-    let size, offset, assetBase =
-      TileBuilder.getAssetData "platform_slope_4x2x2" state.CurrentColor env
-
-    let currentHalf = size.Z * 0.5f
-
-    let gap = if env.Random.NextDouble() < 0.2 then 2.0f else -0.25f
-    let dist = prevHalf + currentHalf + gap
-
-    let yOffset = if goUp then 0.0f else -size.Y
-    let nextYOffset = if goUp then size.Y else -size.Y
-
-    let rot =
-      if state.Direction = -Vector3.UnitZ then
-        0.0f
-      elif state.Direction = Vector3.UnitZ then
-        MathHelper.Pi
-      elif state.Direction = -Vector3.UnitX then
-        MathHelper.PiOver2
-      else
-        -MathHelper.PiOver2
-
-    let finalRot = if goUp then rot else rot + MathHelper.Pi
-
-    let slopeCenter =
-      state.Position
-      + state.Direction * dist
-      + Vector3.Up * (size.Y * 0.5f + 0.5f + yOffset)
-
-    tiles.Add(
-      TileBuilder.slope
-        slopeCenter
-        finalRot
-        state.CurrentColor
-        size
-        assetBase
-        offset
-    )
-
-    state |> StateOps.advance dist |> StateOps.moveY nextYOffset, currentHalf
-
-  let addPlatform
-    (env: #IRandomProvider & #IModelStoreProvider)
-    (tiles: ResizeArray<Tile>)
-    (state: PathState)
-    =
-    let gapSize =
-      if env.Random.NextDouble() < 0.8 then
-        env.Random.Next(1, 3)
-      else
-        env.Random.Next(3, 5)
-
-    let assets = [
-      "platform_1x1x1"
-      "platform_2x2x1"
-      "platform_4x4x1"
-      "platform_6x6x1"
-    ]
-
-    let size, offset, assetBase =
-      TileBuilder.getAssetData
-        assets.[env.Random.Next(assets.Length)]
-        state.CurrentColor
-        env
-
-    let heightChange = float32(env.Random.Next(-1, 2)) * 2.0f
-    let dist = 0.5f + float32 gapSize + size.Z * 0.5f
-
-    let nextPos =
-      state.Position + state.Direction * dist + Vector3.Up * heightChange
-
-    tiles.Add(
-      TileBuilder.platform nextPos state.CurrentColor size assetBase offset
-    )
-
-    { state with Position = nextPos } |> StateOps.advance(size.Z * 0.5f - 0.5f)
-
-// ─────────────────────────────────────────────────────────────
-// Segment Strategies
-// ─────────────────────────────────────────────────────────────
-
-module SegmentStrategies =
-
-  let flatRun
-    (env: #IRandomProvider & #IModelStoreProvider)
-    (length: int)
-    (state: PathState)
-    =
-    let tiles = ResizeArray<Tile>()
-    let mutable s = state
-
-    if s.Direction <> s.PreviousDirection then
-      for _ in 1 .. s.Width * 2 do
-        s <- s |> BuildingBlocks.addRow env tiles
-
-    for _ in 1..length do
-      s <- s |> BuildingBlocks.addRow env tiles
-
-    List.ofSeq tiles, s
-
-  let slope
-    (env: #IRandomProvider & #IModelStoreProvider)
-    (length: int)
-    (state: PathState)
-    =
-    let tiles = ResizeArray<Tile>()
-    let mutable s = state
-    let mutable ph = 0.5f
-
-    for _ in 1 .. Math.Max(1, length / 2) do
-      let nextS, nextPh = s |> BuildingBlocks.addSlope env tiles ph
-      s <- nextS
-      ph <- nextPh
-
-    List.ofSeq tiles, s
-
-  let platform
-    (env: #IRandomProvider & #IModelStoreProvider)
-    (count: int)
-    (state: PathState)
-    =
-    let tiles = ResizeArray<Tile>()
-    let mutable s = state
-
-    for _ in 1..count do
-      s <- s |> BuildingBlocks.addPlatform env tiles
-
-    List.ofSeq tiles, s
-
-// ─────────────────────────────────────────────────────────────
 // Map Generator
 // ─────────────────────────────────────────────────────────────
 
 module MapGenerator =
 
-  let createInitialState() = {
-    Position = Vector3(0.0f, 0.0f, 0.0f)
-    Direction = -Vector3.UnitZ
-    PreviousDirection = -Vector3.UnitZ
-    Width = 2
-    CurrentColor = 0
-  }
+  let createInitialState (mode: GameMode) (seed: int) =
+    PathGraphSystem.initialize mode seed
 
   let getSpawnPoint() = Vector3(0.0f, 4.0f, 0.0f)
 
-  let generateSegment
-    (env: #IRandomProvider & #IModelStoreProvider)
-    (state: PathState)
-    (obstacles: Tile list)
-    (config: GenerationConfig)
-    =
-    let relevantObstacles =
-      obstacles
-      |> List.filter(fun t ->
-        let box = Validation.getTileBounds t 0.5f
-        box.Contains(state.Position) = ContainmentType.Disjoint)
-
-    let rec retry attempt =
-      let segmentType = env.Random.Next(0, 4)
-      let length = env.Random.Next(10, 20)
-
-      let tiles, endState =
-        match segmentType with
-        | 1 -> state |> SegmentStrategies.slope env length
-        | 2 -> state |> SegmentStrategies.platform env (length / 2)
-        | _ -> state |> SegmentStrategies.flatRun env length
-
-      let nextState =
-        {
-          endState with
-              CurrentColor = (state.CurrentColor + 1) % 4
-        }
-        |> StateOps.turn(
-          match env.Random.Next(0, 3) with
-          | 1 -> MathHelper.PiOver2
-          | 2 -> -MathHelper.PiOver2
-          | _ -> 0.0f
-        )
-
-      if not(Validation.checkOverlap tiles relevantObstacles config) then
-        tiles |> Array.ofList, nextState
-      elif attempt < 5 then
-        retry(attempt + 1)
-      else
-        let t, s = state |> SegmentStrategies.flatRun env 5
-
-        t |> Array.ofList,
-        {
-          s with
-              PreviousDirection = state.Direction
-        }
-
-    retry 0
-
   module Operations =
-    let needsUpdate (playerPosition: Vector3) (pathState: PathState) =
-      Vector3.Distance(playerPosition, pathState.Position) < 120.0f
 
-    /// Handle infinite map generation and cleanup
+    /// Handle map generation and cleanup
     let updateMap
       (env: #IRandomProvider & #IModelStoreProvider)
       (playerPosition: Vector3)
       (map: Tile array)
-      (pathState: PathState)
+      (pathGraph: PathGraph)
       =
-      let map', state', generated =
-        if needsUpdate playerPosition pathState then
+
+      let newTiles, nextGraph =
+        match pathGraph.Mode with
+        | Infinite ->
           let config = {
             MaxJumpHeight = 2.8f
             MaxJumpDistance = 7.0f
@@ -450,55 +37,82 @@ module MapGenerator =
           let obstacles =
             map
             |> Array.filter(fun t ->
-              Vector3.DistanceSquared(t.Position, pathState.Position) < 2500.0f)
-            |> Array.toList
+              // Optimize collision check to nearby tiles
+              Vector3.DistanceSquared(t.Position, playerPosition) < 2500.0f)
 
-          let newTiles, nextState =
-            generateSegment env pathState obstacles config
+          InfiniteMode.generate env pathGraph playerPosition obstacles config
 
-          Array.append map newTiles, nextState, true
-        else
-          map, pathState, false
+        | _ ->
+          // Placeholder for finite modes
+          [||], pathGraph
 
-      // Optimization: Cleanup distant tiles
+      let updatedMap = Array.append map newTiles
+
+      // Optimization: Cleanup tiles that are far behind or way too far ahead
       let finalMap =
-        map'
+        updatedMap
         |> Array.filter(fun t ->
-          Vector3.DistanceSquared(t.Position, playerPosition) < 40000.0f)
+          Vector3.DistanceSquared(t.Position, playerPosition) < 14400.0f) // 120 units radius
 
-      if generated || finalMap.Length <> map.Length then
-        ValueSome(finalMap, state')
+      if finalMap.Length <> map.Length || newTiles.Length > 0 then
+        ValueSome(finalMap, nextGraph)
       else
         ValueNone
 
   let draw
     (env: #IModelStoreProvider)
     (frustum: BoundingFrustum)
+    (playerPos: Vector3)
     (map: Tile array)
     (buffer: PipelineBuffer<RenderCommand>)
     =
+    // 1. Find player's current segment context
+    // We look for the tile the player is closest to or currently over
+    let playerContext =
+      map
+      |> Array.tryFind(fun t ->
+        let distSq = Vector3.DistanceSquared(t.Position, playerPos)
+        distSq < 16.0f) // Within 4 units
+      |> Option.map(fun t -> t.PathId, t.SegmentIndex)
+
     buffer
       .DrawMany(
         [|
           for i = 0 to map.Length - 1 do
             let tile = map.[i]
-            let halfSize = tile.Size * 0.5f
 
-            let box =
-              BoundingBox(tile.Position - halfSize, tile.Position + halfSize)
+            // 2. Filter by platform count (at most 10 in front and behind)
+            let isVisible =
+              match playerContext with
+              | Some(pId, sIndex) ->
+                // Same path: +/- 10 platforms
+                if tile.PathId = pId then
+                  abs(tile.SegmentIndex - sIndex) <= 10
+                else
+                  // Different path (branch): visible if close to branch point (distance fallback)
+                  Vector3.DistanceSquared(tile.Position, playerPos) < 400.0f
+              | None ->
+                // No context: fallback to distance cull
+                Vector3.DistanceSquared(tile.Position, playerPos) < 1600.0f
 
-            if frustum.Intersects(box) then
-              env.ModelStore.GetMesh(Assets.getAsset tile)
-              |> ValueOption.bind(fun m -> draw {
-                mesh m
-                at tile.VisualOffset
+            if isVisible then
+              let halfSize = tile.Size * 0.5f
 
-                rotatedBy(
-                  Quaternion.CreateFromAxisAngle(Vector3.Up, tile.Rotation)
-                )
+              let box =
+                BoundingBox(tile.Position - halfSize, tile.Position + halfSize)
 
-                relativeTo(Matrix.CreateTranslation(tile.Position))
-              })
+              if frustum.Intersects(box) then
+                env.ModelStore.GetMesh tile.AssetDefinition
+                |> ValueOption.bind(fun m -> draw {
+                  mesh m
+                  at tile.VisualOffset
+
+                  rotatedBy(
+                    Quaternion.CreateFromAxisAngle(Vector3.Up, tile.Rotation)
+                  )
+
+                  relativeTo(Matrix.CreateTranslation(tile.Position))
+                })
         |]
       )
       .Submit()
