@@ -6,18 +6,18 @@ open FsBump.Core
 
 module Park =
 
-  /// Generates the park area with all biomes at relaxed intensity
+  /// Generates park area with all biomes at relaxed intensity
   /// <param name="config">Park configuration</param>
-  /// <param name="chunkManager">Chunk manager for the world</param>
+  /// <param name="env">Environment containing noise generator</param>
   /// <returns>Park generation result with tiles, zone map, gates, and spawn point</returns>
   let generate
     (config: ParkConfig)
-    (chunkManager: ChunkManager)
+    (env: #INoiseProvider)
     : ParkGenerationResult =
     {
-      ParkTiles = [||]
-      ZoneMap = Array2D.create 1 1 Lowland
-      Gates = [||]
+      ParkTiles = Array.empty
+      ZoneMap = Array2D.zeroCreate 1 1
+      Gates = Array.empty
       SpawnPoint = Vector3(0.0f, 4.0f, 0.0f)
       GenerationTime = 0.0f<Seconds>
     }

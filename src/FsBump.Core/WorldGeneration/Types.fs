@@ -421,3 +421,14 @@ type INoiseGenerator =
     persistence: float32 *
     lacunarity: float32 ->
       float32
+
+type INoiseProvider =
+  abstract NoiseGenerator: INoiseGenerator
+
+type GenerationEnv = {
+  NoiseGenerator: INoiseGenerator
+  WorldSeed: int
+} with
+
+  interface INoiseProvider with
+    member this.NoiseGenerator = this.NoiseGenerator

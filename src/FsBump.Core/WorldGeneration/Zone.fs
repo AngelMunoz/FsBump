@@ -120,15 +120,16 @@ module Zone =
   /// Determines the zone type at a specific world position using noise generation
   /// <param name="worldSeed">The seed for world generation</param>
   /// <param name="position">The world position to check</param>
-  /// <param name="noiseGenerator">The noise generator to use</param>
+  /// <param name="env">The environment containing noise generator</param>
   /// <returns>The zone type at the specified position</returns>
   let getZoneAtPosition
     (worldSeed: int)
     (position: Vector3)
-    (noiseGenerator: INoiseGenerator)
+    (env: #INoiseProvider)
     : ZoneType =
+    let noiseGen = env.NoiseGenerator
     let biomeNoise =
-      noiseGenerator.OctaveNoise2D(
+      noiseGen.OctaveNoise2D(
         position.X * 0.005f,
         position.Z * 0.005f,
         4,
@@ -137,7 +138,7 @@ module Zone =
       )
 
     let transitionNoise =
-      noiseGenerator.Noise2D(position.X * 0.01f, position.Z * 0.01f)
+      noiseGen.Noise2D(position.X * 0.01f, position.Z * 0.01f)
 
     let normalizedBiome = (biomeNoise + 1.0f) * 0.5f
     let normalizedTransition = (transitionNoise + 1.0f) * 0.5f
@@ -175,7 +176,7 @@ module Zone =
     (width: int)
     (depth: int)
     (worldSeed: int)
-    (noiseGenerator: INoiseGenerator)
+    (env: #INoiseProvider)
     : ZoneMap =
     let zones = Array2D.zeroCreate<ZoneType> width depth
     let transitions: ZoneTransition ResizeArray = ResizeArray()
@@ -185,7 +186,7 @@ module Zone =
         let worldX = float32 x * 100.0f
         let worldZ = float32 z * 100.0f
         let position = Vector3(worldX, 0.0f, worldZ)
-        let zone = getZoneAtPosition worldSeed position noiseGenerator
+        let zone = getZoneAtPosition worldSeed position env
         zones.[x, z] <- zone
 
         match zone with
@@ -209,12 +210,12 @@ module Zone =
   /// Gets the zone type for a specific chunk coordinate
   /// <param name="chunkCoord">The chunk coordinate to check</param>
   /// <param name="worldSeed">The seed for world generation</param>
-  /// <param name="noiseGenerator">The noise generator to use</param>
+  /// <param name="env">The environment containing noise generator</param>
   /// <returns>The zone type for the specified chunk</returns>
   let getChunkZone
     (chunkCoord: ChunkCoord)
     (worldSeed: int)
-    (noiseGenerator: INoiseGenerator)
+    (env: #INoiseProvider)
     : ZoneType =
     let position =
       Vector3(
@@ -223,4 +224,4 @@ module Zone =
         float32 chunkCoord.Z * 100.0f
       )
 
-    getZoneAtPosition worldSeed position noiseGenerator
+    getZoneAtPosition worldSeed position env

@@ -8,12 +8,21 @@ open Mibo.Elmish
 
 /// Elmish-style orchestrator for world generation
 module Generation =
+  module GenerationEnv =
+    let create(seed: int) : GenerationEnv = {
+      NoiseGenerator = Noise.create(seed)
+      WorldSeed = seed
+    }
+
+
   /// Main model for world generation state
   type Model = {
     /// Optional park generation result
     ParkResult: ParkGenerationResult voption
     /// Current chunk manager state
     ChunkManager: ChunkManager
+    /// Generation environment with noise generator
+    GenerationEnv: GenerationEnv
     /// Currently active biome/zone type
     ActiveBiomeIntensity: ZoneType
     /// Last gate the player crossed
@@ -45,7 +54,7 @@ module Generation =
 
   /// Initialize generation system with park configuration
   let init(config: ParkConfig) : struct (Model * Cmd<Msg>) =
-    let noiseGenerator = Noise.create config.Seed
+    let genEnv = GenerationEnv.create(config.Seed)
 
     let chunkManager = {
       LoadedChunks = Dictionary<ChunkCoord, ChunkState>()
@@ -59,33 +68,29 @@ module Generation =
     let model = {
       ParkResult = ValueNone
       ChunkManager = chunkManager
+      GenerationEnv = genEnv
       ActiveBiomeIntensity = Lowland
       LastGateCrossed = ValueNone
       Checkpoints = [||]
     }
 
-    // Start with park generation - for now return empty model with initialize command
-    let initialModel = {
-      ParkResult = ValueNone
-      ChunkManager = chunkManager
-      ActiveBiomeIntensity = Lowland
-      LastGateCrossed = ValueNone
-      Checkpoints = [||]
-    }
-
-    initialModel, Cmd.ofMsg(InitializePark config)
+    model, Cmd.ofMsg(InitializePark config)
 
   /// Update generation system with Elmish messages
   let update (msg: Msg) (model: Model) : struct (Model * Cmd<Msg>) =
     match msg with
     | InitializePark(config) ->
-      let parkResult = Park.generate config model.ChunkManager
-      { model with ParkResult = ValueSome parkResult }, Cmd.none
+      let parkResult = Park.generate config model.GenerationEnv
+
+      {
+        model with
+            ParkResult = ValueSome parkResult
+      },
+      Cmd.none
     | GenerateChunk(coord) ->
       let tiles = Chunk.generate coord model.ChunkManager
       model, Cmd.ofMsg(ChunkGenerated(coord, tiles))
-    | ChunkGenerated(coord, tiles) ->
-      model, Cmd.none
+    | ChunkGenerated(coord, tiles) -> model, Cmd.none
     | CheckGateCrossing(_, _) -> model, Cmd.none
     | ResetToPark(_) -> model, Cmd.none
     | SaveWorld(_) -> model, Cmd.none

@@ -1,8 +1,8 @@
 # Infinite Park World - Implementation Plan
 
-**Version:** 2.0
-**Last Updated:** 2026-01-26
-**Status:** Technical Specification - Ready for Implementation
+**Version:** 2.1
+**Last Updated:** 2026-01-27
+**Status:** Phase 1 & 2 Complete - Ready for Phase 3
 
 ---
 
@@ -35,7 +35,7 @@ let platformCount: int<PlatformIndex> = 100
 ### 3. Namespace/Directory Separation
 
 All generation code in `FsBump.WorldGeneration` namespace.
-New directory: `src/FsBump.WorldGeneration/`
+New directory: `src/FsBump.Core/WorldGeneration/`
 Separate library that can be tested independently.
 
 ### 4. Self-Contained Library
@@ -43,6 +43,33 @@ Separate library that can be tested independently.
 Minimal dependencies (XNA, FSharp.UMX, math).
 Elmish-compatible message types for async generation.
 Can be used in other projects.
+
+### 5. Internal Composition Root (Updated)
+
+WorldGeneration has its own composition root for Phase 1 & 2:
+
+**INoiseProvider interface:**
+```fsharp
+type INoiseProvider =
+  abstract NoiseGenerator: INoiseGenerator
+```
+
+**GenerationEnv (internal composition):**
+```fsharp
+type GenerationEnv = {
+  NoiseGenerator: INoiseGenerator
+  WorldSeed: int
+} with
+  interface INoiseProvider with
+    member this.NoiseGenerator = this.NoiseGenerator
+```
+
+**Environment creation:**
+- Created in Generation.fs (not Types.fs) because Noise module not available in Types.fs compilation order
+- Factory: `GenerationEnv.create(seed)` in Generation.fs
+- Functions accept `#INoiseProvider` for testability with flexible constraints
+
+**Note:** Random provider NOT needed for Phase 1 & 2 (noise is deterministic, tile generation is math only). Will be added in Phase 3 when stochastic features needed.
 
 ---
 
@@ -53,24 +80,23 @@ src/
   FsBump.Core/
     Domain.fs (extend with generation types)
     Program.fs (extend with generation messages)
-    ...
+    Generation.fs          (Orchestrator, Elmish integration, GenerationEnv factory)
     WorldGeneration/
-      Types.fs              (Core types, measures, DUs)
-      Noise.fs              (Noise interfaces)
-      Zone.fs               (Zone definitions)
-      Chunk.fs              (Chunk management)
-      Park.fs               (Park generation)
-      Gates.fs              (Gate system)
-      Generation.fs          (Orchestrator)
-      Checkpoints.fs         (Checkpoint system)
-      SaveSystem.fs         (Save/load, finite recording)
+      Types.fs              (Core types, measures, DUs, INoiseProvider, INoiseGenerator)
+      Noise.fs              (Noise interfaces, Perlin implementation)
+      Zone.fs               (Zone definitions, characteristics)
+      Park.fs               (Park generation - stub)
+      Chunk.fs              (Chunk generation - stub)
+      Gates.fs              (Gate system - TODO)
+      Checkpoints.fs         (Checkpoint system - TODO)
+      SaveSystem.fs         (Save/load, finite recording - TODO)
 ```
 
 ---
 
 ## Technical Implementation Phases
 
-### Phase 1: The Domain (Foundation)
+### Phase 1: The Domain (Foundation) - ✅ COMPLETE
 
 **Goal:** Zero-logic setup. Define the "language" of the system.
 
@@ -78,7 +104,19 @@ src/
 - **Key Task:** Define all UMX measures and DUs.
 - **Deliverable:** Compilable `FsBump.WorldGeneration` library with types only.
 
-### Phase 2: Spatial Intelligence (The Map)
+**Implementation Status:**
+- ✅ All UMX measures defined (ChunkId, ZoneId, GateId, CheckpointId, PlatformIndex, WorldUnits, Degrees, Seconds, WorldUnitsPerSecond)
+- ✅ All DUs defined (ZoneType, GateVariant, PlatformVariant, SeedMode, ChunkMode, PlatformVariant, GateAccessibility)
+- ✅ All core structs defined (ZoneCharacteristics, ZoneTransition, VerticalMix, ChunkState, ChunkManager, etc.)
+- ✅ INoiseProvider interface defined for flexible composition
+- ✅ INoiseGenerator interface defined with 2D/3D noise and octave methods
+- ✅ GenerationEnv internal composition root with INoiseProvider implementation
+- ✅ GenerationEnv.create factory in Generation.fs (moved from Types.fs due to compilation order)
+- ✅ All save data types defined (WorldSaveData, FiniteLevelSaveData, InteractionData, FeatureData, FiniteStats)
+- ✅ Park and chunk generation result types defined
+- ✅ Build succeeds
+
+### Phase 2: Spatial Intelligence (The Map) - ✅ COMPLETE
 
 **Goal:** Determine "What" goes "Where" without placing tiles.
 
@@ -86,13 +124,34 @@ src/
 - **Key Task:** Implement multi-layer noise for biome distribution.
 - **Deliverable:** Unit tests verifying deterministic zone queries (e.g., "What zone is at (500, 200)?").
 
-### Phase 3: The Generator (The Content)
+**Implementation Status:**
+- ✅ Complete Perlin noise implementation (Noise.fs)
+  - 2D/3D noise with fade function
+  - Octave noise for multi-layer terrain
+  - Noise.create factory with seed and optional OctaveConfig
+- ✅ Zone system fully implemented (Zone.fs)
+  - Zone.getCharacteristics: Returns zone parameters for Lowland/Midland/Highland
+  - Zone.getCharacteristics handles transitions with lerp blending
+  - Zone.getZoneAtPosition: Multi-layer noise for biome distribution (biome + transition)
+  - Zone.createZoneMap: Creates 2D zone map with transitions
+  - Zone.isInPark: Park boundary detection
+  - Zone.getChunkZone: Zone query for chunk coordinates
+- ✅ All zone characteristics match design values
+- ✅ Build succeeds
+
+### Phase 3: The Generator (The Content) - STUBBED
 
 **Goal:** Turn math into tiles.
 
 - **Files:** `Park.fs` (Special case), `Chunk.fs` (General case)
 - **Key Task:** Implement rolling ramp and platform placement algorithms.
 - **Deliverable:** Visual debugger or test harness rendering a single chunk.
+
+**Implementation Status:**
+- ✅ Park.generate stub implemented (returns empty tiles, empty zone map, empty gates)
+- ✅ Chunk.generate stub implemented (returns empty tiles)
+- ⚠️ Actual tile generation logic NOT implemented (that's Phase 3 core work)
+- ✅ Types ready for Phase 3 implementation
 
 ### Phase 4: State & Orchestration (The Nervous System)
 
@@ -393,25 +452,27 @@ type ParkGenerationResult = {
 ### Generation Model Types
 
 ```fsharp
-type GenerationModel = {
+type Model = {
   ParkResult: ParkGenerationResult voption
   ChunkManager: ChunkManager
+  GenerationEnv: GenerationEnv  // Internal composition root
   ActiveBiomeIntensity: ZoneType
   LastGateCrossed: GateType voption
   Checkpoints: CheckpointState array
 }
-
-type GenerationCmd =
-  | UpdateTiles of Tile array
-  | UpdateBiomeIntensity of ZoneType
-  | UpdateCheckpoints of CheckpointState array
 ```
+
+**Implementation Note:**
+- GenerationEnv created once in Generation.init(config)
+- Stored in Model for reuse across generation lifecycle
+- Enables testability via INoiseProvider interface
+- Noise generator is deterministic (same seed = same output)
 
 ---
 
 ## Zone System
 
-### Zone Characteristics
+### Zone Characteristics (Implemented in Zone.fs)
 
 **Lowland (Safe, Relaxed):**
 
@@ -449,6 +510,24 @@ type GenerationCmd =
   GapFrequency = 0.30f
   ConnectivityTarget = 0.50f
   VerticalMix = { Gentle = 0.10f; Moderate = 0.30f; Vertical = 0.60f }
+}
+```
+
+### Zone Map
+
+```fsharp
+// Type that represents zone distribution across world
+type ZoneMap = {
+  Zones: ZoneType[,]
+  Transitions: ZoneTransition array
+}
+
+type ZoneTransition = {
+  From: ZoneType
+  To: ZoneType
+  FromPosition: ChunkCoord
+  ToPosition: ChunkCoord
+  BlendFactor: float32
 }
 ```
 
