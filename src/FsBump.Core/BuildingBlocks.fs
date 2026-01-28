@@ -132,8 +132,13 @@ module BuildingBlocks =
     =
     let roll = env.Random.NextDouble()
 
-    let barrierProb = if mode.IsChallenge then 0.3 else 0.15
-    let decoProb = if mode.IsExploration then 0.5 else 0.3
+    let struct (barrierProb, decoProb) =
+      match mode with
+      | TerrainAssets.Challenge -> 0.3, 0.15
+      | TerrainAssets.Infinite
+      | TerrainAssets.Exploration -> 0.5, 0.3
+
+
     let assets = TerrainAssets.getAssetsByMode mode
 
     if roll < barrierProb then
@@ -319,12 +324,11 @@ module BuildingBlocks =
     (mode: TerrainAssets.TerrainAssets)
     =
     let gapSize =
-      if mode.IsChallenge then
-        env.Random.Next(3, 6) // Harder jumps
-      else if env.Random.NextDouble() < 0.8 then
-        env.Random.Next(1, 3)
-      else
-        env.Random.Next(3, 5)
+      match mode with
+      | TerrainAssets.Challenge -> env.Random.Next(3, 6)
+      | TerrainAssets.Infinite
+      | TerrainAssets.Exploration -> env.Random.Next(1, 5)
+
 
     let assets = TerrainAssets.getAssetsByMode mode
     let platformAssets = assets.Platforms
