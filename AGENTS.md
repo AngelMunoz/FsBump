@@ -49,7 +49,7 @@ This project currently does not have a test suite. When adding tests:
 
 ### File Structure
 - Files start with `namespace` declaration
-- Imports (`open`) follow immediately, topologically sorted namespaces. e.g. System, Sytem.IO, System.Threading then Microsoft.*.
+- Imports (`open`) follow immediately, topologically sorted namespaces. e.g. System, System.IO, System.Threading then Microsoft.*.
 - open statements shadow declarations, so they might need a different sorting order based on the User's definitions in the FsBump.Core.fsproj file
 - Semantic modules and submodules with well defined and responsible functions.
 - Avoid mega functions with large bodies, refactor in composable functions that favor partial application.
