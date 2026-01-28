@@ -77,7 +77,7 @@ This project currently does not have a test suite. When adding tests:
 - Apply Units of Measure where appropriate: `type [<Measure>] PathId`, `Guid<PathId>`
 - Avoid more than 3 parameters per function, use contextual objects instead.
 - Prefer object expressions `{ new Interface with ... impl ...}` to concrete classes
-- Delare types before they are used
+- Declare types before they are used
 
 ### Error Handling
 - **Prefer `ValueOption`** over `Option` for performance (no allocation in None case)
