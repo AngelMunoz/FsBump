@@ -4,7 +4,7 @@
 
 ### Build
 
-Since we have an android project we need to call `dotnet workload restore` note however, that it might need administration proviledges, so notify user in case the program fails due missing workloads.
+Since we have an android project we need to call `dotnet workload restore` note however, that it might need administration privileges, so notify user in case the program fails due missing workloads.
 
 ```bash
 # Build all projects
